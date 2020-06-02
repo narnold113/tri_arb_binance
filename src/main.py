@@ -11,15 +11,15 @@ import random
 import time
 import sys
 from datetime import datetime
-from statistics import fmean
+from statistics import mean as fmean
 from mysql.connector import Error
 from mysql.connector import errorcode
 
 logger = logging.getLogger('tri_arb_binance')
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-# logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
-logHandler = logging.StreamHandler()
+logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
+# logHandler = logging.StreamHandler()
 logHandler.setLevel(logging.INFO)
 logHandler.setFormatter(formatter)
 logger.addHandler(logHandler)
@@ -228,7 +228,7 @@ async def populateArb():
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
 
                 for type in ['regular', 'reverse']:
-                    if arbitrage_book[arb][type]['triangle_values'][0] >= 0:
+                    if arbitrage_book[arb][type]['triangle_values'][0] >= 0.003:
                         if 'timestamp' not in threshold_dict[arb][type].keys():
                             threshold_dict[arb][type]['timestamp'] = float(time.time())
                             threshold_values[arb][type].append(arbitrage_book[arb][type]['triangle_values'][0])
@@ -275,7 +275,7 @@ async def createSqlTables():
             except mysql.connector.Error as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
                     # print(arb, "table already exists.")
-                    log_msq = arb + ' table already exists'
+                    log_msg = arb + ' table already exists'
                     logger.info(log_msg)
                 else:
                     # print(err.msg)
@@ -305,7 +305,7 @@ async def arbMonitor():
                     for type in ['regular', 'reverse']:
                         # print(arb, type, len(threshold_keep[arb][type]))
                         if len(threshold_keep[arb][type]) >= 5:
-                            log_msq = arb + 'for type' + type + 'has over 5 length'
+                            log_msg = arb + 'for type' + type + 'has over 5 length'
                             logger.info(log_msg)
                             # print(arb, 'for type', type, 'has over 5 length')
                             for dct in threshold_keep[arb][type]:
@@ -335,6 +335,7 @@ async def fullBookTimer():
             check = all(item in build_list for item in PAIRS)
             if check:
                 # print('Awaiting populateArb and arbMonitor functions')
+                logger.info('Awaiting populateArb and arbMonitor functions')
                 await asyncio.wait([populateArb(), arbMonitor()])
             else:
                 continue
