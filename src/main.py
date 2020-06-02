@@ -5,7 +5,7 @@ import aiohttp
 import numpy as np
 import logging
 import traceback as tb
-import helper_test as helper
+import helper as helper
 import mysql.connector
 import random
 import time
@@ -29,14 +29,14 @@ balances = [1_000]
 
 ARBS = [
     'eth' # OK
-    # ,'ltc' # OK
-    # ,'xrp' # OK
-    # ,'bch' # OK
-    # ,'eos' # OK
-    # ,'xmr' # OK
-    # ,'etc' # OK
-    # ,'zrx' # OK
-    # ,'trx'
+    ,'ltc' # OK
+    ,'xrp' # OK
+    ,'bch' # OK
+    ,'eos' # OK
+    ,'xmr' # OK
+    ,'etc' # OK
+    ,'zrx' # OK
+    ,'trx'
 ]
 SIDES = [
     'a',
@@ -330,7 +330,7 @@ async def fullBookTimer():
     global build_list
 
     while 1:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1)
         try:
             check = all(item in build_list for item in PAIRS)
             if check:
