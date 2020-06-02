@@ -375,8 +375,12 @@ async def subscribe() -> None:
                 logger.exception(err)
                 sys.exit()
             while 1:
-                res = await ws.recv()
-                await updateBook(res)
+                try:
+                    res = await ws.recv()
+                    await updateBook(res)
+                except Exception as err:
+                    logger.exception(err)
+                    sys.exit()
     except Exception as err:
         logger.exception(err)
         sys.exit()
