@@ -301,7 +301,7 @@ async def arbMonitor():
     global threshold_keep
 
     while 1:
-        await asyncio.sleep(180)
+        await asyncio.sleep(5)
         for arb in ARBS:
             insert_statement = str(
                 "INSERT INTO {} "
