@@ -11,7 +11,7 @@ import random
 import time
 import sys
 from datetime import datetime
-from statistics import fmean
+from statistics import mean as fmean
 from mysql.connector import Error
 from mysql.connector import errorcode
 
@@ -284,7 +284,7 @@ async def createSqlTables():
             except mysql.connector.Error as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
                     # print(arb, "table already exists.")
-                    log_msq = arb + ' table already exists'
+                    log_msg = arb + ' table already exists'
                     logger.info(log_msg)
                 else:
                     # print(err.msg)
@@ -300,50 +300,46 @@ async def arbMonitor():
     global arbitrage_book
     global threshold_keep
 
-    try:
-        conn = mysql.connector.connect(user='python', password='python', host='127.0.0.1', database='tri_arb_binance')
-
-        while 1:
-            await asyncio.sleep(30)
-            try:
-                for arb in ARBS:
-                    insert_statement = str(
-                        "INSERT INTO {} "
-                        "VALUES (%s, %s, %s, %s, %s, %s)".format(arb)
-                    )
-                    for type in ['regular', 'reverse']:
-                        # print(arb, type, len(threshold_keep[arb][type]))
-                        if len(threshold_keep[arb][type]) >= 5:
-                            log_msg = arb + 'for type' + type + 'has over 5 length'
-                            logger.info(log_msg)
-                            # print(arb, 'for type', type, 'has over 5 length')
-                            for dct in threshold_keep[arb][type]:
-                                insert_values = list(dct.values())
-                                insert_values.append(type)
-                                cursor = conn.cursor()
-                                cursor.execute(insert_statement, tuple(insert_values))
-                                conn.commit()
-                                cursor.close()
-                                # print('SQL insert was succesfull')
-                            threshold_keep[arb][type][:] = list()
-                        else:
-                            continue
-            except Exception as err:
-                logger.exception(err)
-                sys.exit()
-    except Exception as err:
-        logger.exception(err)
-        sys.exit()
+    while 1:
+        await asyncio.sleep(5)
+        for arb in ARBS:
+            insert_statement = str(
+                "INSERT INTO {} "
+                "VALUES (%s, %s, %s, %s, %s, %s)".format(arb)
+            )
+            for type in ['regular', 'reverse']:
+                if len(threshold_keep[arb][type]) >= 5:
+                    try:
+                        conn = mysql.connector.connect(user='python', password='python', host='127.0.0.1', database='tri_arb_binance')
+                        log_msg = arb + ' for type ' + type + ' has over 5 length. Inserting records now.'
+                        logger.info(log_msg)
+                        for dct in threshold_keep[arb][type]:
+                            insert_values = list(dct.values())
+                            insert_values.append(type)
+                            cursor = conn.cursor()
+                            cursor.execute(insert_statement, tuple(insert_values))
+                            conn.commit()
+                            cursor.close()
+                        logger.info('Inserted records successfully')
+                    except Exception as err:
+                        logger.exception(err)
+                        conn.close()
+                        sys.exit()
+                    finally:
+                        threshold_keep[arb][type][:] = list()
+                        if conn is not None and conn.is_connected():
+                            conn.close()
+                else:
+                    continue
 
 async def fullBookTimer():
     global build_list
 
     while 1:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1)
         try:
             check = all(item in build_list for item in PAIRS)
             if check:
-                # print('Awaiting populateArb and arbMonitor functions')
                 logger.info('Awaiting populateArb and arbMonitor functions')
                 await asyncio.wait([populateArb(), arbMonitor()])
             else:
@@ -353,6 +349,11 @@ async def fullBookTimer():
             sys.exit()
         else:
             continue
+
+async def stillAlive():
+    while 1:
+        await asyncio.sleep(1800)
+        logger.info('Still alive?')
 
 async def printBook():
     global arbitrage_book
@@ -384,8 +385,12 @@ async def subscribe() -> None:
                 logger.exception(err)
                 sys.exit()
             while 1:
-                res = await ws.recv()
-                await updateBook(res)
+                try:
+                    res = await ws.recv()
+                    await updateBook(res)
+                except Exception as err:
+                    logger.exception(err)
+                    sys.exit()
     except Exception as err:
         logger.exception(err)
         sys.exit()
@@ -395,8 +400,8 @@ async def main():
     coroutines.append(subscribe())
     coroutines.append(fullBookTimer())
     coroutines.append(createSqlTables())
+    coroutines.append(stillAlive())
     await asyncio.wait(coroutines)
-    # pass
 
 
 if __name__ == "__main__":

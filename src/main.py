@@ -237,7 +237,7 @@ async def populateArb():
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
 
                 for type in ['regular', 'reverse']:
-                    if arbitrage_book[arb][type]['triangle_values'][0] >= 0.003:
+                    if arbitrage_book[arb][type]['triangle_values'][0] >= 0.002:
                         if 'timestamp' not in threshold_dict[arb][type].keys():
                             threshold_dict[arb][type]['timestamp'] = float(time.time())
                             threshold_values[arb][type].append(arbitrage_book[arb][type]['triangle_values'][0])
@@ -327,7 +327,7 @@ async def arbMonitor():
                         sys.exit()
                     finally:
                         threshold_keep[arb][type][:] = list()
-                        if conn is not None and conn.is_connected()
+                        if conn is not None and conn.is_connected():
                             conn.close()
                 else:
                     continue
