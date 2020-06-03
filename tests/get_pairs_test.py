@@ -2,7 +2,7 @@ import requests
 
 ex_info = requests.get('https://api.binance.com/api/v3/exchangeInfo').json()
 # print(ex_info.keys())
-print(ex_info['symbols'][0]['symbol'])
+# print(ex_info['symbols'][0]['symbol'])
 
 all_pairs = []
 
@@ -12,7 +12,7 @@ for item in ex_info['symbols']:
     elif item['symbol'][-4:] == 'USDT':
         all_pairs.append(item['symbol'])
 
-print(len(all_pairs))
-print(all_pairs)
+sliced_pairs = [pair[:3] for pair in all_pairs]
 
-
+# print(len(all_pairs))
+print(sliced_pairs.sort())

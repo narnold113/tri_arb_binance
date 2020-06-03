@@ -29,14 +29,23 @@ balances = [1_000]
 
 ARBS = [
     'eth' # OK
-    # ,'ltc' # OK
-    # ,'xrp' # OK
-    # ,'bch' # OK
-    # ,'eos' # OK
-    # ,'xmr' # OK
-    # ,'etc' # OK
-    # ,'zrx' # OK
-    # ,'trx'
+    ,'ltc' # OK
+    ,'xrp' # OK
+    ,'bch' # OK
+    ,'eos' # OK
+    ,'xmr' # OK
+    ,'etc' # OK
+    ,'zrx' # OK
+    ,'trx'
+    ,'bnb'
+    ,'ada'
+    ,'vet'
+    # ,'link'
+    ,'zil'
+    ,'neo'
+    ,'xlm'
+    ,'zec'
+    # ,'dash'
 ]
 SIDES = [
     'a',
@@ -305,7 +314,7 @@ async def arbMonitor():
                     for type in ['regular', 'reverse']:
                         # print(arb, type, len(threshold_keep[arb][type]))
                         if len(threshold_keep[arb][type]) >= 5:
-                            log_msq = arb + 'for type' + type + 'has over 5 length'
+                            log_msg = arb + 'for type' + type + 'has over 5 length'
                             logger.info(log_msg)
                             # print(arb, 'for type', type, 'has over 5 length')
                             for dct in threshold_keep[arb][type]:
@@ -335,6 +344,7 @@ async def fullBookTimer():
             check = all(item in build_list for item in PAIRS)
             if check:
                 # print('Awaiting populateArb and arbMonitor functions')
+                logger.info('Awaiting populateArb and arbMonitor functions')
                 await asyncio.wait([populateArb(), arbMonitor()])
             else:
                 continue
