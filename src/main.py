@@ -197,6 +197,7 @@ async def populateArb():
     global arbitrage_book
     global btc_book
     global balances
+    global threshold_keep
     threshold_values = {
         arb: {
             type: list()
@@ -283,11 +284,9 @@ async def createSqlTables():
                 logger.info(log_msg)
             except mysql.connector.Error as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-                    # print(arb, "table already exists.")
                     log_msg = arb + ' table already exists'
                     logger.info(log_msg)
                 else:
-                    # print(err.msg)
                     logger.exception(err.msq)
     except Error as e:
         logger.exception(e.msg)
@@ -353,6 +352,8 @@ async def fullBookTimer():
 async def stillAlive():
     while 1:
         await asyncio.sleep(1800)
+        log_message = 'The arb rate for ETH regular is ' + arbitrage_book['eth']['regular']['triangle_values']
+        logger.info(log_message)
         logger.info('Still alive?')
 
 async def printBook():
@@ -369,7 +370,7 @@ async def subscribe() -> None:
     params = json.loads(strParams)
     params['params'] = STREAMS
     try:
-        async with websockets.client.connect(url, max_queue=None) as ws:
+        async with websockets.client.connect(url, ping_interval=None, ping_timeout=None, max_queue=None) as ws:
             try:
                 await ws.send(str(params).replace('\'', '"'))
             except Exception as err:
