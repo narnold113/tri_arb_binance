@@ -167,3 +167,186 @@
 # # arr.extend(stats)
 # t_dict['eth']['type'] = 'regular'
 # print(t_dict)
+
+
+
+
+
+
+
+
+
+
+
+#
+# arb = 'ETH'
+#
+# x = 'BTCUSDT'
+# y = 'ETHBTC'
+# z = 'ETHUSDT'
+#
+# def myFunc(pair):
+#     pass
+#
+#
+#
+#
+#
+#
+#
+#
+# balances = [{'asset': 'BTC', 'free': '0.00006779', 'locked': '0.00000000'}, {'asset': 'ETH', 'free': '0.10290524', 'locked': '0.00000000'}, {'asset': 'EOS', 'free': '0.00044000', 'locked': '0.00000000'}, {'asset': 'USDT', 'free': '0.01032688', 'locked': '0.00000000'}, {'asset': 'XRP', 'free': '167.47300000', 'locked': '0.00000000'}]
+# usdt = float([x['free'] for x in balances if x['asset'] == 'USDT'][0])
+# # print(usdt)
+#
+#
+#
+#
+#
+# times = [[1593639974622, 1593639974580], [1593639974692, 1593639974650], [1593639974770, 1593639974724]]
+# y = [x[0] - x[1] for x in times]
+# print(y)
+# # print(times[1][0] - times[2][1])
+
+
+
+
+
+
+
+
+
+# import random
+# import time
+#
+# x = []
+# while 1:
+#     time.sleep(1)
+#     x.append(random.randint(0,1))
+#     x_len = len(x)
+#     if x_len > 2:
+#         x = x[-3:]
+#         if x[2] == x[1] and x[2] == x[0]:
+#             break
+#     else:
+#         continue
+
+
+
+
+
+
+
+# Starting from BTCUSDT
+# REGULAR = buy buy sell
+# REVERSE = sell sell buy
+
+#
+# import requests
+#
+#
+# ARBS = [
+#     'eth'
+# ]
+# PAIRS = []
+# for arb in ARBS:
+#     PAIRS.append(arb + 'usdt')
+#     PAIRS.append(arb + 'btc')
+# PAIRS.insert(0, 'btcusdt')
+#
+# symbolsInfo = requests.get('https://api.binance.com/api/v3/exchangeInfo').json()['symbols']
+# symbolsInfo = [x for x in symbolsInfo if x['symbol'].lower() in PAIRS]
+# stepSizes = {
+#     symbol['symbol']: symbol['filters'][2]['stepSize']
+#     for symbol in symbolsInfo
+# }
+# print(stepSizes)
+
+
+#
+# def is_something(number, is_regular):
+#     return 'Buy {}'.format(number) if is_regular else 'Sell {}'.format(number)
+#
+# print(is_something(10, True if 'regular' == 'regular' else False))
+#
+
+
+
+
+
+
+
+
+
+
+
+
+import requests
+import aiohttp
+import time
+import hmac
+import hashlib
+import asyncio
+import os
+from datetime import datetime
+
+async def _get_balance(quote):
+    url = "https://api.binance.com/api/v3/account"
+    header = {'X-MBX-APIKEY': str(os.environ["BIN_API"])}
+    timestamp = int(round(time.time() * 1000))
+    recvWindow = 10_000
+    query_string = 'recvWindow={}&timestamp={}'.format(recvWindow, timestamp)
+    signature = hmac.new(bytes(os.environ["BIN_SECRET"], 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
+    params = {
+        'recvWindow': recvWindow,
+        'timestamp': timestamp,
+        'signature': signature
+    }
+    await asyncio.sleep(5)
+    async with aiohttp.ClientSession() as session:
+        async with session.request(method="GET",
+                                   url=url,
+                                   headers=header,
+                                   params=params) as resp:
+            json_content = await resp.json()
+            # print(json_content)
+            if json_content is not None:
+                balances = [x for x in json_content['balances'] if float(x['free']) != 0]
+                return [[x['free'] for x in balances if x['asset'] == quote][0], resp.status]
+
+async def get_balance(quote):
+    bal = await _get_balance('USDT')
+    print(bal[0]) ### Is a string ###
+
+async def countToTen():
+    for i in range(1,11):
+        print('i: {} | Time: {}'.format(i, datetime.now()))
+        await asyncio.sleep(1)
+
+async def main():
+    coroutines = []
+    coroutines.append(get_balance('USDT'))
+    # coroutines.append(countToTen())
+    await asyncio.wait(coroutines)
+
+
+if __name__ == "__main__":
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
+    except:
+        pass
+    finally:
+        loop.close()
+
+
+
+
+
+
+
+
+
+
+
+pass

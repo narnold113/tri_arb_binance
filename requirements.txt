@@ -1,5 +1,4 @@
 asyncio
-numpy
 websockets
-mysql-connector
 aiohttp
+numpy

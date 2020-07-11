@@ -1,32 +1,33 @@
-import json
 import asyncio
 import websockets
 import aiohttp
-import requests
 import numpy as np
+import json
 import logging
 import traceback as tb
-import helper_test as helper
-import random
 import time
 import sys
 import os
+import hmac
+import hashlib
+import math
 from datetime import datetime
-from statistics import mean as fmean
 
 logger = logging.getLogger('tri_arb_binance')
 logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
-# logHandler = logging.StreamHandler()
+logHandler = logging.StreamHandler()
 logHandler.setLevel(logging.INFO)
 logHandler.setFormatter(formatter)
 logger.addHandler(logHandler)
 
-# balances = [1_000, 10_000, 25_000, 50_00]
-balances = [1_000]
 APIKEY = str(os.environ["BIN_API"])
 SECRETKEY = str(os.environ["BIN_SECRET"])
+is_trading = False
+balance = 0
+stepSizes = {}
+build_list = []
 
 ARBS = [
     'eth' # OK
@@ -36,16 +37,16 @@ ARBS = [
     ,'eos' # OK
     ,'xmr' # OK
     ,'etc' # OK
-    ,'zrx' # OK
-    ,'trx'
+    # ,'zrx' # OK
+    # ,'trx'
     ,'bnb'
-    ,'ada'
-    ,'vet'
-    # ,'link'
-    ,'zil'
-    ,'neo'
-    ,'xlm'
-    ,'zec'
+    # ,'ada'
+    # ,'vet'
+    # # ,'link'
+    # ,'zil'
+    # ,'neo'
+    # ,'xlm'
+    # ,'zec'
     # ,'dash'
 ]
 SIDES = [
@@ -102,25 +103,7 @@ arbitrage_book = {
     }
     for arb in ARBS
 }
-threshold_keep = {
-    arb: {
-        'regular': [],
-        'reverse': []
-    }
-    for arb in ARBS
-}
-build_list = []
 
-symbolsInfo = requests.get('https://api.binance.com/api/v3/exchangeInfo').json()['symbols']
-symbolsInfo = [x for x in symbolsInfo if x['symbol'].lower() in PAIRS]
-stepSizes = {
-    symbol['symbol']: float(symbol['filters'][2]['stepSize'])
-    for symbol in symbolsInfo
-}
-# print(stepSizes)
-
-trade_url = 'https://api.binance.com/api/v3/order'
-api_header = {'X-MBX-APIKEY': str(os.environ["BIN_API"])}
 
 ### Helper functions ###
 def round_lot_precision(symbol, number):
@@ -150,7 +133,7 @@ def create_signed_params(symbol, side, quantity):
             'signature': signature
         }
     else: # SELL
-        quantity = round_lot_precision(symbol, quantity)
+        # quantity = round_lot_precision(symbol, quantity)
         query_string = 'symbol={}&side={}&type={}&quantity={}&recvWindow={}&timestamp={}'.format(symbol, side, type, quantity, recvWindow, timestamp)
         signature = hmac.new(bytes(os.environ["BIN_SECRET"], 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
         return {
@@ -163,32 +146,62 @@ def create_signed_params(symbol, side, quantity):
             'signature': signature
         }
 
+async def get_stepsizes():
+    async with aiohttp.ClientSession() as session:
+        async with session.get('https://api.binance.com/api/v3/exchangeInfo') as resp:
+            json_res = await resp.json()
+            if json_res is not None:
+                symbolsInfo = json_res['symbols']
+                symbolsInfo = [x for x in symbolsInfo if x['symbol'].lower() in PAIRS]
+                return {
+                    symbol['symbol']: float(symbol['filters'][2]['stepSize'])
+                    for symbol in symbolsInfo
+                }
+
+async def get_balance(quote):
+    global APIKEY
+    global SECRETKEY
+    url = "https://api.binance.com/api/v3/account"
+    header = {'X-MBX-APIKEY': APIKEY}
+    timestamp = int(round(time.time() * 1000))
+    recvWindow = 10_000
+    query_string = 'recvWindow={}&timestamp={}'.format(recvWindow, timestamp)
+    signature = hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
+    params = {
+        'recvWindow': recvWindow,
+        'timestamp': timestamp,
+        'signature': signature
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.request(method="GET",
+                                   url=url,
+                                   headers=header,
+                                   params=params) as resp:
+            json_content = await resp.json()
+            if json_content is not None and resp.status == 200:
+                balances = [x for x in json_content['balances'] if float(x['free']) != 0]
+                return round_quote_precision([float(x['free']) for x in balances if x['asset'] == quote][0])
+
 def getWeightedPrice(orders, balance, reverse=False):
-    weightedPrices = []
-    for bal in balance:
-        volume = 0
-        price = 0
-        wp = 0
-        remainder = 0
-        if reverse:
-            for order in orders:
-                volume += order[1]
-                wp += order[0] * (order[1] / bal)
-                if volume >= bal:
-                    remainder = volume - bal
-                    wp -= order[0] * (remainder / bal)
-                    weightedPrices.append(wp)
-                    break
-        else:
-            for order in orders:
-                volume += order[0] * order[1]
-                wp += order[0] * ((order[0] * order[1]) / bal)
-                if volume >= bal:
-                    remainder = volume - bal
-                    wp -= order[0] * (remainder / bal)
-                    weightedPrices.append(wp)
-                    break
-    return np.array(weightedPrices, np.float64)
+    volume = 0
+    price = 0
+    wp = 0
+    if reverse:
+        for order in orders:
+            volume += order[1]
+            wp += order[0] * (order[1] / balance)
+            if volume >= balance:
+                remainder = volume - balance
+                wp -= order[0] * (remainder / balance)
+                return wp
+    else:
+        for order in orders:
+            volume += order[0] * order[1]
+            wp += order[0] * ((order[0] * order[1]) / balance)
+            if volume >= balance:
+                remainder = volume - balance
+                wp -= order[0] * (remainder / balance)
+                return wp
 
 
 
@@ -230,6 +243,8 @@ async def subscribe() -> None:
 
 async def fullBookTimer():
     global build_list
+    global balance
+    print(balance)
     while 1:
         await asyncio.sleep(1)
         try:
@@ -237,7 +252,8 @@ async def fullBookTimer():
             if check:
                 logger.info('Awaiting populateArb and arb_monitor')
                 await asyncio.wait([populateArb(), arb_monitor(), stillAlive()])
-                # await asyncio.wait([populateArb(), arb_monitor(), stillAlive(), printBook()])
+                # await asyncio.wait([populateArb(), printBook()])
+                # await asyncio.wait([populateArb()])
             else:
                 continue
         except Exception as err:
@@ -333,88 +349,94 @@ async def updateBook(res):
 async def populateArb():
     global arbitrage_book
     global btc_book
-    global balances
-    threshold_values = {
-        arb: {
-            type: list()
-            for type in ['regular', 'reverse']
-        }
-        for arb in ARBS
-    }
-    threshold_dict = {
-        arb: {
-            type: dict()
-            for type in ['regular', 'reverse']
-        }
-        for arb in ARBS
-    }
-
+    global balance
     while 1:
         await asyncio.sleep(0.005)
         try:
-            btc_book['weighted_prices']['regular'] = helper.getWeightedPrice(btc_book['orderbook']['a'], balances, reverse=False)
-            btc_book['weighted_prices']['reverse'] = helper.getWeightedPrice(btc_book['orderbook']['b'], balances, reverse=False)
-            btc_book['amount_if_bought'] = np.divide(balances, btc_book['weighted_prices']['regular'])
+            btc_book['weighted_prices']['regular'] = getWeightedPrice(btc_book['orderbook']['a'], balance, reverse=False)
+            btc_book['weighted_prices']['reverse'] = getWeightedPrice(btc_book['orderbook']['b'], balance, reverse=False)
+            btc_book['amount_if_bought'] = np.divide(balance, btc_book['weighted_prices']['regular'])
+            # print(btc_book['weighted_prices']['regular'])
 
             for arb in ARBS:
                 pair_iterator = [pair for pair in PAIRS if pair[:3] == arb]
                 for pair in sorted(pair_iterator, reverse=True):
                     arb_ob = arbitrage_book[arb]['orderbooks'][pair]
                     if pair[-4:] == 'usdt':
-                        arbitrage_book[arb]['regular']['weighted_prices'][pair] = helper.getWeightedPrice(arb_ob['b'], balances, reverse=False)
-                        arbitrage_book[arb]['reverse']['weighted_prices'][pair] = helper.getWeightedPrice(arb_ob['a'], balances, reverse=False)
-                        arbitrage_book[arb]['reverse']['amount_if_bought'] = np.divide(balances, arbitrage_book[arb]['reverse']['weighted_prices'][pair])
+                        arbitrage_book[arb]['regular']['weighted_prices'][pair] = getWeightedPrice(arb_ob['b'], balance, reverse=False)
+                        arbitrage_book[arb]['reverse']['weighted_prices'][pair] = getWeightedPrice(arb_ob['a'], balance, reverse=False)
+                        arbitrage_book[arb]['reverse']['amount_if_bought'] = np.divide(balance, arbitrage_book[arb]['reverse']['weighted_prices'][pair])
                     else:
-                        arbitrage_book[arb]['regular']['weighted_prices'][pair] = helper.getWeightedPrice(arb_ob['a'], btc_book['amount_if_bought'], reverse=False)
-                        arbitrage_book[arb]['reverse']['weighted_prices'][pair] = helper.getWeightedPrice(arb_ob['b'], arbitrage_book[arb]['reverse']['amount_if_bought'], reverse=True)
+                        arbitrage_book[arb]['regular']['weighted_prices'][pair] = getWeightedPrice(arb_ob['a'], btc_book['amount_if_bought'], reverse=False)
+                        arbitrage_book[arb]['reverse']['weighted_prices'][pair] = getWeightedPrice(arb_ob['b'], arbitrage_book[arb]['reverse']['amount_if_bought'], reverse=True)
 
                 regular_arb_price = np.multiply(btc_book['weighted_prices']['regular'], arbitrage_book[arb]['regular']['weighted_prices'][arb + 'btc'])
                 reverse_arb_price = np.divide(arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'usdt'], arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'btc'])
                 arbitrage_book[arb]['regular']['triangle_values'] = np.divide(np.subtract(arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'], regular_arb_price), regular_arb_price)
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
+            # print(arbitrage_book['eth']['regular']['triangle_values'])
         except Exception as err:
             logger.exception(err)
             sys.exit()
 
 async def arb_monitor():
     global arbitrage_book
-    global balances
+    global is_trading
     while 1:
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.5)
         for arb in ARBS:
             for type in ['regular', 'reverse']:
-                if arbitrage_book[arb][type]['triangle_values'][0] > 0:
-                    logger.info('Executing the arb trade for {} {}. Arb value is {}'.format(type, arb, arbitrage_book[arb][type]['triangle_values'][0]))
-                    # await asyncio.wait([ex_arb(arb, True if type == 'regular' else False)])
+                # print(arbitrage_book[arb][type]['triangle_values'])
+                if arbitrage_book[arb][type]['triangle_values'] > 0 and is_trading == False:
+                    logger.info('Executing the arb trade for {} {}. Arb value is {}'.format(type, arb, arbitrage_book[arb][type]['triangle_values']))
+                    await asyncio.wait([ex_arb(arb.upper(), True if type == 'regular' else False)])
 
-def ex_trade(pair, side, quantity):
+async def ex_trade(pair, side, quantity):
+    trade_url = 'https://api.binance.com/api/v3/order'
+    api_header = {'X-MBX-APIKEY': APIKEY}
     params = create_signed_params(pair, side, quantity)
-    print(params)
-    r = requests.post(trade_url, headers=api_header, params=params)
-    return {'content': r.json(), 'status_code': r.status_code, 'params': params}
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url=trade_url, headers=api_header, params=params) as resp:
+                json_res = await resp.json()
+                if json_res is not None:
+                    return {'content': json_res, 'status_code': resp.status, 'params': params}
+    except Exception as err:
+        logger.exception(err)
+        sys.exit()
 
 async def ex_arb(arb, is_regular):
+    global is_trading
+    global balance
+    is_trading = True
     pairs = ['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']
-    balances_hash = [round_quote_precision(get_balances('USDT')), 0, 0]
+    balances_hash = [str(balance), 0, 0]
 
     for i, pair in enumerate(pairs):
         if i == 0:
-            trade_response = ex_trade(pair, 'BUY', balances_hash[0])
+            trade_response = await ex_trade(pair, 'BUY', balances_hash[0])
         elif i == 1:
-            trade_response = ex_trade(pair, 'BUY', balances_hash[1]) if is_regular else ex_trade(pair, 'SELL', balances_hash[1])
+            trade_response = await ex_trade(pair, 'BUY', balances_hash[1]) if is_regular else await ex_trade(pair, 'SELL', balances_hash[1])
         elif i == 2:
-            trade_response = ex_trade(pair, 'SELL', balances_hash[2])
+            trade_response = await ex_trade(pair, 'SELL', balances_hash[2])
         log_msg = '{} params : '.format(pair) + str(trade_response['params']) + ' | trade response: ' + str(trade_response['content'])
         logger.info(log_msg)
         if trade_response['status_code'] == 200:
             if i < 2:
-                balances_hash[i + 1] = round_lot_precision(pairs[i + 1], float(trade_response['content']['executedQty']) * 0.999)
+                balances_hash[i + 1] = str(round_lot_precision(pairs[i + 1], float(trade_response['content']['cummulativeQuoteQty'] if is_regular == False and pair[-3:] == 'BTC' else trade_response['content']['executedQty']) * 0.999))
                 continue
             else:
-                log_msg = 'Trades for {} were successful'.format(arb)
-                logger.info(log_msg)
+                balance = await get_balance('USDT')
+                # print(balance)
+                # balance = trade_response['content']['cummulativeQuoteQty']
+                logger.info('Trades for {} arb were successful'.format(arb))
+                is_trading = False
+                # print(balance)
+                sys.exit()
         else:
             logger.info('Status code error: {}'.format(trade_response['status_code']))
+            is_trading = False
+            sys.exit()
             break
 
 
@@ -431,7 +453,7 @@ async def stillAlive():
             check_list = check_list[-3:]
             logger.info(check_list)
             if check_list[2] == check_list[1] and check_list[2] == check_list[1]:
-                logger.info('Program still running but stream stopped')
+                logger.info('Program still running but websocket streams have stopped')
                 sys.exit()
             else:
                 continue
@@ -441,12 +463,20 @@ async def stillAlive():
 async def printBook():
     global arbitrage_book
     global btc_book
-    await asyncio.sleep(10)
+    # await asyncio.sleep(10)
     while 1:
-        print(btc_book['orderbook']['a'][0:3])
         await asyncio.sleep(10)
+        # print(btc_book['orderbook']['a'][0:3])
+        print(arbitrage_book['ETH']['regular']['triangle_values'])
+
 
 async def main():
+    global balance
+    global stepSizes
+    balance = await get_balance('USDT')
+    stepSizes = await get_stepsizes()
+    print(balance)
+    # print(stepSizes)
     coroutines = []
     coroutines.append(subscribe())
     coroutines.append(fullBookTimer())
