@@ -281,7 +281,6 @@
 
 
 
-import requests
 import aiohttp
 import time
 import hmac
@@ -302,7 +301,7 @@ async def _get_balance(quote):
         'timestamp': timestamp,
         'signature': signature
     }
-    await asyncio.sleep(5)
+#    await asyncio.sleep(5)
     async with aiohttp.ClientSession() as session:
         async with session.request(method="GET",
                                    url=url,
