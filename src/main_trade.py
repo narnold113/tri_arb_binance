@@ -387,7 +387,7 @@ async def arb_monitor():
         for arb in ARBS:
             for type in ['regular', 'reverse']:
                 # print(arbitrage_book[arb][type]['triangle_values'])
-                if arbitrage_book[arb][type]['triangle_values'] > 0 and is_trading == False:
+                if arbitrage_book[arb][type]['triangle_values'] > 0.004 and is_trading == False:
                     logger.info('Executing the arb trade for {} {}. Arb value is {}'.format(type, arb, arbitrage_book[arb][type]['triangle_values']))
                     await asyncio.wait([ex_arb(arb.upper(), True if type == 'regular' else False)])
 
