@@ -446,12 +446,12 @@ async def stillAlive():
     await asyncio.sleep(10)
     check_list = []
     while 1:
-        await asyncio.sleep(10)
-        check_list.append(arbitrage_book['eth']['regular']['triangle_values'][0])
+        await asyncio.sleep(60)
+        check_list.append(arbitrage_book['eth']['regular']['triangle_values'])
         check_len = len(check_list)
         if check_len > 2:
             check_list = check_list[-3:]
-            logger.info(check_list)
+            # logger.info(check_list)
             if check_list[2] == check_list[1] and check_list[2] == check_list[1]:
                 logger.info('Program still running but websocket streams have stopped')
                 sys.exit()
