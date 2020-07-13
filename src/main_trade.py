@@ -383,7 +383,7 @@ async def arb_monitor():
     global arbitrage_book
     global is_trading
     while 1:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.005)
         for arb in ARBS:
             for type in ['regular', 'reverse']:
                 # print(arbitrage_book[arb][type]['triangle_values'])
