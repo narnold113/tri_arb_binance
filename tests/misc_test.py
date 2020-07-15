@@ -275,12 +275,12 @@
 
 
 
-#
-#
-#
-#
-#
-#
+
+
+
+
+
+
 # import aiohttp
 # import time
 # import hmac
@@ -337,24 +337,6 @@
 #         pass
 #     finally:
 #         loop.close()
-
-
-
-
-
-
-import math
-
-def round_quote_precision(quantity):
-    factor = 10 ** 8
-    return math.floor(quantity * factor) / factor
-print(round_quote_precision(0.003762234))
-
-
-
-
-
-
 
 
 

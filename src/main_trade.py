@@ -376,11 +376,17 @@ async def ex_arb(arb, is_regular):
                         balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
                     else:
                         balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc']))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc'])
+                        logger.info(log_msg)
                 elif i == 1:
                     if is_regular:
                         balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt']))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt'])
+                        logger.info(log_msg)
                     else:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'USDT']))
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * btc_book['weighted_prices']['reverse']))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(btc_book['weighted_prices']['reverse'])
+                        logger.info(log_msg)
                 else:
                     balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
                     logger.info('Trades for {} arb were successful'.format(arb))
@@ -435,8 +441,6 @@ async def fullBookTimer():
             if check:
                 logger.info('Awaiting populateArb and arb_monitor')
                 await asyncio.wait([populateArb(), arb_monitor(), stillAlive()])
-                # await asyncio.wait([populateArb(), printBook()])
-                # await asyncio.wait([populateArb()])
             else:
                 continue
         except Exception as err:
@@ -450,8 +454,6 @@ async def main():
     global balance
     global stepSizes
     balance = await get_balance('USDT')
-    # print(balance)
-    # print(stepSizes)
     coroutines = []
     coroutines.append(subscribe())
     coroutines.append(fullBookTimer())

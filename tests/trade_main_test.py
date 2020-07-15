@@ -30,12 +30,12 @@ stepSizes = {}
 build_list = []
 
 ARBS = [
-    'eth' # OK
+    # 'eth' # OK
     # ,'ltc' # OK
     # ,'xrp' # OK
     # ,'bch' # OK
     # ,'eos' # OK
-    # ,'xmr' # OK
+    'xmr' # OK
     # ,'etc' # OK
     # ,'zrx' # OK
     # ,'trx'
@@ -347,16 +347,21 @@ async def arb_monitor():
     global arbitrage_book
     global is_trading
     while 1:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.005)
+        # for arb in ARBS:
+        #     for type in ['regular', 'reverse']:
+        #         if arbitrage_book[arb][type]['triangle_values'] > 0 and is_trading == False:
+        #             logger.info('Executing the arb trade for {} {}. Arb value is {}'.format(type, arb, arbitrage_book[arb][type]['triangle_values']))
+        #             if type == 'regular':
+        #                 await ex_arb(arb.upper(), True)
+        #             else:
+        #                 await ex_arb(arb.upper(), False)
+
         for arb in ARBS:
-            for type in ['regular', 'reverse']:
-                if arbitrage_book[arb][type]['triangle_values'] > 0 and is_trading == False:
-                    logger.info('Executing the arb trade for {} {}. Arb value is {}'.format(type, arb, arbitrage_book[arb][type]['triangle_values']))
-                    if type == 'regular':
-                        await ex_arb(arb.upper(), True)
-                    else:
-                        await ex_arb(arb.upper(), False)
-                    # await asyncio.wait([ex_arb(arb.upper(), True if type == 'regular' else False)])
+            # for type in ['regular', 'reverse']:
+            if arbitrage_book[arb]['reverse']['triangle_values'] > 0 and is_trading == False:
+                logger.info('Executing the arb trade for {} {}. Arb value is {}'.format('reverse', arb, arbitrage_book[arb]['reverse']['triangle_values']))
+                await ex_arb(arb.upper(), False)
 
 async def ex_trade(pair, side, quantity):
     trade_url = 'https://api.binance.com/api/v3/order'
@@ -376,6 +381,7 @@ async def ex_arb(arb, is_regular):
     global is_trading
     global balance
     global arbitrage_book
+    global btc_book
     is_trading = True
     pairs = ['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']
     balances_hash = [str(balance), 0, 0]
@@ -396,11 +402,17 @@ async def ex_arb(arb, is_regular):
                         balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
                     else:
                         balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc']))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc'])
+                        logger.info(log_msg)
                 elif i == 1:
                     if is_regular:
                         balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt']))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt'])
+                        logger.info(log_msg)
                     else:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'USDT']))
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * btc_book['weighted_prices']['reverse']))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(btc_book['weighted_prices']['reverse'])
+                        logger.info(log_msg)
                 else:
                     # balance = await get_balance('USDT')
                     balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
