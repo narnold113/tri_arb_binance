@@ -37,16 +37,16 @@ ARBS = [
     ,'eos' # OK
     ,'xmr' # OK
     ,'etc' # OK
-    # ,'zrx' # OK
-    # ,'trx'
+    ,'zrx' # OK
+    ,'trx'
     ,'bnb'
-    # ,'ada'
-    # ,'vet'
-    # # ,'link'
-    # ,'zil'
-    # ,'neo'
-    # ,'xlm'
-    # ,'zec'
+    ,'ada'
+    ,'vet'
+    # ,'link'
+    ,'zil'
+    ,'neo'
+    ,'xlm'
+    ,'zec'
     # ,'dash'
 ]
 SIDES = [
@@ -295,7 +295,7 @@ async def populateArb():
     global btc_book
     global balance
     while 1:
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.003)
         try:
             btc_book['weighted_prices']['regular'] = getWeightedPrice(btc_book['orderbook']['a'], balance, reverse=False)
             btc_book['weighted_prices']['reverse'] = getWeightedPrice(btc_book['orderbook']['b'], balance, reverse=False)
@@ -327,7 +327,7 @@ async def arb_monitor():
     global arbitrage_book
     global is_trading
     while 1:
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.003)
         for arb in ARBS:
             for type in ['regular', 'reverse']:
                 # print(arbitrage_book[arb][type]['triangle_values'])
