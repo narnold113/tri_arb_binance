@@ -88,14 +88,14 @@ arbitrage_book = {
         'regular': { ### Regular arbitrage order: buy BTC/USD, buy ALT/BTC and sell ALT/USD. For buys, we calculate weighted price on the "ask" side ###
             'weighted_prices': {
                 pair: 0
-                for pair in PAIRS if pair[:3] == arb # or pair == 'BTCUSD'
+                for pair in PAIRS if pair[:3] == arb
             },
             'triangle_values': []
         },
         'reverse': { ### Reverse arbitrage order: sell BTC/USD, sell ALT/BTC and buy ALT/USD. For sells, we consume the "bid" side of the orderbook ###
             'weighted_prices': {
                 pair: 0
-                for pair in PAIRS if pair[:3] == arb # or pair == 'BTCUSD'
+                for pair in PAIRS if pair[:3] == arb
             },
             'triangle_values': [],
             'amount_if_bought': 0
@@ -117,34 +117,18 @@ def round_quote_precision(quantity):
     return math.floor(quantity * factor) / factor
 
 def create_signed_params(symbol, side, quantity):
-    recvWindow = 10_000
     timestamp = int(round(time.time() * 1000))
-    type = 'MARKET'
-    if side == 'BUY':
-        query_string = 'symbol={}&side={}&type={}&quoteOrderQty={}&recvWindow={}&timestamp={}'.format(symbol, side, type, quantity, recvWindow, timestamp)
-        signature = hmac.new(bytes(os.environ["BIN_SECRET"], 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
-        return {
-            'symbol': symbol,
-            'side': side,
-            'type': type,
-            'quoteOrderQty': quantity,
-            'recvWindow': recvWindow,
-            'timestamp': timestamp,
-            'signature': signature
-        }
-    else: # SELL
-        # quantity = round_lot_precision(symbol, quantity)
-        query_string = 'symbol={}&side={}&type={}&quantity={}&recvWindow={}&timestamp={}'.format(symbol, side, type, quantity, recvWindow, timestamp)
-        signature = hmac.new(bytes(os.environ["BIN_SECRET"], 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
-        return {
-            'symbol': symbol,
-            'side': side,
-            'type': type,
-            'quantity': quantity,
-            'recvWindow': recvWindow,
-            'timestamp': timestamp,
-            'signature': signature
-        }
+    query_string = 'symbol={}&side={}&type={}&quoteOrderQty={}&recvWindow={}&timestamp={}'.format(symbol, side, 'MARKET', quantity, 10_000, timestamp)
+    signature = hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
+    return {
+        'symbol': symbol,
+        'side': side,
+        'type': 'MARKET',
+        'quoteOrderQty': quantity,
+        'recvWindow': 10_000,
+        'timestamp': timestamp,
+        'signature': signature
+    }
 
 async def get_stepsizes():
     async with aiohttp.ClientSession() as session:
@@ -240,27 +224,6 @@ async def subscribe() -> None:
     except Exception as err:
         logger.exception(err)
         sys.exit()
-
-async def fullBookTimer():
-    global build_list
-    global balance
-    print(balance)
-    while 1:
-        await asyncio.sleep(1)
-        try:
-            check = all(item in build_list for item in PAIRS)
-            if check:
-                logger.info('Awaiting populateArb and arb_monitor')
-                await asyncio.wait([populateArb(), arb_monitor(), stillAlive()])
-                # await asyncio.wait([populateArb(), printBook()])
-                # await asyncio.wait([populateArb()])
-            else:
-                continue
-        except Exception as err:
-            logger.exception(err)
-            sys.exit()
-        else:
-            continue
 
 
 async def buildBook(pair):
@@ -375,6 +338,7 @@ async def populateArb():
                 arbitrage_book[arb]['regular']['triangle_values'] = np.divide(np.subtract(arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'], regular_arb_price), regular_arb_price)
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
             # print(arbitrage_book['eth']['regular']['triangle_values'])
+            # print(arbitrage_book['eth']['regular']['weighted_prices']['ethbtc'])
         except Exception as err:
             logger.exception(err)
             sys.exit()
@@ -386,10 +350,13 @@ async def arb_monitor():
         await asyncio.sleep(0.5)
         for arb in ARBS:
             for type in ['regular', 'reverse']:
-                # print(arbitrage_book[arb][type]['triangle_values'])
                 if arbitrage_book[arb][type]['triangle_values'] > 0 and is_trading == False:
                     logger.info('Executing the arb trade for {} {}. Arb value is {}'.format(type, arb, arbitrage_book[arb][type]['triangle_values']))
-                    await asyncio.wait([ex_arb(arb.upper(), True if type == 'regular' else False)])
+                    if type == 'regular':
+                        await ex_arb(arb.upper(), True)
+                    else:
+                        await ex_arb(arb.upper(), False)
+                    # await asyncio.wait([ex_arb(arb.upper(), True if type == 'regular' else False)])
 
 async def ex_trade(pair, side, quantity):
     trade_url = 'https://api.binance.com/api/v3/order'
@@ -408,6 +375,7 @@ async def ex_trade(pair, side, quantity):
 async def ex_arb(arb, is_regular):
     global is_trading
     global balance
+    global arbitrage_book
     is_trading = True
     pairs = ['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']
     balances_hash = [str(balance), 0, 0]
@@ -416,22 +384,33 @@ async def ex_arb(arb, is_regular):
         if i == 0:
             trade_response = await ex_trade(pair, 'BUY', balances_hash[0])
         elif i == 1:
-            trade_response = await ex_trade(pair, 'BUY', balances_hash[1]) if is_regular else await ex_trade(pair, 'SELL', balances_hash[1])
+            trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', balances_hash[1])
         elif i == 2:
             trade_response = await ex_trade(pair, 'SELL', balances_hash[2])
         log_msg = '{} params : '.format(pair) + str(trade_response['params']) + ' | trade response: ' + str(trade_response['content'])
         logger.info(log_msg)
         if trade_response['status_code'] == 200:
-            if i < 2:
-                balances_hash[i + 1] = str(round_lot_precision(pairs[i + 1], float(trade_response['content']['cummulativeQuoteQty'] if is_regular == False and pair[-3:] == 'BTC' else trade_response['content']['executedQty']) * 0.999))
-                continue
-            else:
-                balance = await get_balance('USDT')
-                # print(balance)
-                # balance = trade_response['content']['cummulativeQuoteQty']
-                logger.info('Trades for {} arb were successful'.format(arb))
-                is_trading = False
-                # print(balance)
+            try:
+                if i == 0:
+                    if is_regular:
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
+                    else:
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc']))
+                elif i == 1:
+                    if is_regular:
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt']))
+                    else:
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'USDT']))
+                else:
+                    # balance = await get_balance('USDT')
+                    balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
+                    # print(balance)
+                    logger.info('Trades for {} arb were successful'.format(arb))
+                    is_trading = False
+                    # print(balance)
+                    sys.exit()
+            except Exception as err:
+                logger.exception(err)
                 sys.exit()
         else:
             logger.info('Status code error: {}'.format(trade_response['status_code']))
@@ -447,7 +426,7 @@ async def stillAlive():
     check_list = []
     while 1:
         await asyncio.sleep(10)
-        check_list.append(arbitrage_book['eth']['regular']['triangle_values'][0])
+        check_list.append(arbitrage_book['eth']['regular']['triangle_values'])
         check_len = len(check_list)
         if check_len > 2:
             check_list = check_list[-3:]
@@ -469,13 +448,33 @@ async def printBook():
         # print(btc_book['orderbook']['a'][0:3])
         print(arbitrage_book['ETH']['regular']['triangle_values'])
 
+async def fullBookTimer():
+    global build_list
+    global balance
+    print(balance)
+    while 1:
+        await asyncio.sleep(1)
+        try:
+            check = all(item in build_list for item in PAIRS)
+            if check:
+                logger.info('Awaiting populateArb and arb_monitor')
+                await asyncio.wait([populateArb(), arb_monitor(), stillAlive()])
+                # await asyncio.wait([populateArb(), printBook()])
+                # await asyncio.wait([populateArb()])
+            else:
+                continue
+        except Exception as err:
+            logger.exception(err)
+            sys.exit()
+        else:
+            continue
 
 async def main():
     global balance
     global stepSizes
     balance = await get_balance('USDT')
     stepSizes = await get_stepsizes()
-    print(balance)
+    # print(balance)
     # print(stepSizes)
     coroutines = []
     coroutines.append(subscribe())

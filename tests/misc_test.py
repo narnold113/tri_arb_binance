@@ -275,68 +275,86 @@
 
 
 
+#
+#
+#
+#
+#
+#
+# import aiohttp
+# import time
+# import hmac
+# import hashlib
+# import asyncio
+# import os
+# from datetime import datetime
+#
+# async def _get_balance(quote):
+#     url = "https://api.binance.com/api/v3/account"
+#     header = {'X-MBX-APIKEY': str(os.environ["BIN_API"])}
+#     timestamp = int(round(time.time() * 1000))
+#     recvWindow = 10_000
+#     query_string = 'recvWindow={}&timestamp={}'.format(recvWindow, timestamp)
+#     signature = hmac.new(bytes(os.environ["BIN_SECRET"], 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
+#     params = {
+#         'recvWindow': recvWindow,
+#         'timestamp': timestamp,
+#         'signature': signature
+#     }
+# #    await asyncio.sleep(5)
+#     async with aiohttp.ClientSession() as session:
+#         async with session.request(method="GET",
+#                                    url=url,
+#                                    headers=header,
+#                                    params=params) as resp:
+#             json_content = await resp.json()
+#             # print(json_content)
+#             if json_content is not None:
+#                 balances = [x for x in json_content['balances'] if float(x['free']) != 0]
+#                 return [[x['free'] for x in balances if x['asset'] == quote][0], resp.status]
+#
+# async def get_balance(quote):
+#     bal = await _get_balance('USDT')
+#     print(bal[0]) ### Is a string ###
+#
+# async def countToTen():
+#     for i in range(1,11):
+#         print('i: {} | Time: {}'.format(i, datetime.now()))
+#         await asyncio.sleep(1)
+#
+# async def main():
+#     coroutines = []
+#     coroutines.append(get_balance('USDT'))
+#     # coroutines.append(countToTen())
+#     await asyncio.wait(coroutines)
+#
+#
+# if __name__ == "__main__":
+#     try:
+#         loop = asyncio.get_event_loop()
+#         loop.run_until_complete(main())
+#     except:
+#         pass
+#     finally:
+#         loop.close()
 
 
 
 
 
 
-import aiohttp
-import time
-import hmac
-import hashlib
-import asyncio
-import os
-from datetime import datetime
+import math
 
-async def _get_balance(quote):
-    url = "https://api.binance.com/api/v3/account"
-    header = {'X-MBX-APIKEY': str(os.environ["BIN_API"])}
-    timestamp = int(round(time.time() * 1000))
-    recvWindow = 10_000
-    query_string = 'recvWindow={}&timestamp={}'.format(recvWindow, timestamp)
-    signature = hmac.new(bytes(os.environ["BIN_SECRET"], 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
-    params = {
-        'recvWindow': recvWindow,
-        'timestamp': timestamp,
-        'signature': signature
-    }
-#    await asyncio.sleep(5)
-    async with aiohttp.ClientSession() as session:
-        async with session.request(method="GET",
-                                   url=url,
-                                   headers=header,
-                                   params=params) as resp:
-            json_content = await resp.json()
-            # print(json_content)
-            if json_content is not None:
-                balances = [x for x in json_content['balances'] if float(x['free']) != 0]
-                return [[x['free'] for x in balances if x['asset'] == quote][0], resp.status]
-
-async def get_balance(quote):
-    bal = await _get_balance('USDT')
-    print(bal[0]) ### Is a string ###
-
-async def countToTen():
-    for i in range(1,11):
-        print('i: {} | Time: {}'.format(i, datetime.now()))
-        await asyncio.sleep(1)
-
-async def main():
-    coroutines = []
-    coroutines.append(get_balance('USDT'))
-    # coroutines.append(countToTen())
-    await asyncio.wait(coroutines)
+def round_quote_precision(quantity):
+    factor = 10 ** 8
+    return math.floor(quantity * factor) / factor
+print(round_quote_precision(0.003762234))
 
 
-if __name__ == "__main__":
-    try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-    except:
-        pass
-    finally:
-        loop.close()
+
+
+
+
 
 
 
