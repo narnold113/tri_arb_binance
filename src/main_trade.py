@@ -294,6 +294,7 @@ async def populateArb():
     global arbitrage_book
     global btc_book
     global balance
+    global is_trading
     while 1:
         await asyncio.sleep(0.003)
         try:
@@ -318,6 +319,14 @@ async def populateArb():
                 reverse_arb_price = np.divide(arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'usdt'], arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'btc'])
                 arbitrage_book[arb]['regular']['triangle_values'] = np.divide(np.subtract(arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'], regular_arb_price), regular_arb_price)
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
+
+                if arbitrage_book[arb]['regular']['triangle_values'] > 0.004 and is_trading == False:
+                    await ex_arb(arb.upper(), True, 0, arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'])
+                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0.004 and is_trading == False:
+                    await ex_arb(arb.upper(), False, arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'btc'], btc_book['weighted_prices']['reverse'])
+                else:
+                    continue
+
             # print(arbitrage_book['eth']['regular']['triangle_values'])
         except Exception as err:
             logger.exception(err)
@@ -352,7 +361,7 @@ async def ex_trade(pair, side, quantity):
         logger.exception(err)
         sys.exit()
 
-async def ex_arb(arb, is_regular):
+async def ex_arb(arb, is_regular, sl_wp, tl_wp):
     global is_trading
     global balance
     global arbitrage_book
@@ -375,17 +384,17 @@ async def ex_arb(arb, is_regular):
                     if is_regular:
                         balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
                     else:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc']))
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc'])
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * sl_wp))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(sl_wp)
                         logger.info(log_msg)
                 elif i == 1:
                     if is_regular:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt']))
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt'])
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * tl_wp))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(tl_wp)
                         logger.info(log_msg)
                     else:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * btc_book['weighted_prices']['reverse']))
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(btc_book['weighted_prices']['reverse'])
+                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * tl_wp))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(tl_wp)
                         logger.info(log_msg)
                 else:
                     balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
@@ -439,8 +448,9 @@ async def fullBookTimer():
         try:
             check = all(item in build_list for item in PAIRS)
             if check:
-                logger.info('Awaiting populateArb and arb_monitor')
-                await asyncio.wait([populateArb(), arb_monitor(), stillAlive()])
+                logger.info('Awaiting populateArb')
+                # await asyncio.wait([populateArb(), arb_monitor(), stillAlive()])
+                await asyncio.wait([populateArb(), stillAlive()])
             else:
                 continue
         except Exception as err:
