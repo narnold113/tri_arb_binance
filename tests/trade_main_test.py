@@ -340,9 +340,9 @@ async def populateArb():
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
 
                 if arbitrage_book[arb]['regular']['triangle_values'] > 0.004 and is_trading == False:
-                    await ex_arb(arb.upper(), True, 0, arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'])
+                    await ex_arb(arb.upper(), True)
                 elif arbitrage_book[arb]['reverse']['triangle_values'] > 0.004 and is_trading == False:
-                    await ex_arb(arb.upper(), False, arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'btc'], btc_book['weighted_prices']['reverse'])
+                    await ex_arb(arb.upper(), False)
                 else:
                     continue
 
@@ -354,25 +354,16 @@ async def populateArb():
             logger.exception(err)
             sys.exit()
 
-async def arb_monitor():
-    global arbitrage_book
-    global is_trading
-    while 1:
-        await asyncio.sleep(0.005)
-        # for arb in ARBS:
-        #     for type in ['regular', 'reverse']:
-        #         if arbitrage_book[arb][type]['triangle_values'] > 0 and is_trading == False:
-        #             logger.info('Executing the arb trade for {} {}. Arb value is {}'.format(type, arb, arbitrage_book[arb][type]['triangle_values']))
-        #             if type == 'regular':
-        #                 await ex_arb(arb.upper(), True)
-        #             else:
-        #                 await ex_arb(arb.upper(), False)
-
-        for arb in ARBS:
-            # for type in ['regular', 'reverse']:
-            if arbitrage_book[arb]['reverse']['triangle_values'] > 0 and is_trading == False:
-                logger.info('Executing the arb trade for {} {}. Arb value is {}'.format('reverse', arb, arbitrage_book[arb]['reverse']['triangle_values']))
-                await ex_arb(arb.upper(), False)
+# async def arb_monitor():
+#     global arbitrage_book
+#     global is_trading
+#     while 1:
+#         await asyncio.sleep(0.005)
+#         for arb in ARBS:
+#             # for type in ['regular', 'reverse']:
+#             if arbitrage_book[arb]['reverse']['triangle_values'] > 0 and is_trading == False:
+#                 logger.info('Executing the arb trade for {} {}. Arb value is {}'.format('reverse', arb, arbitrage_book[arb]['reverse']['triangle_values']))
+#                 await ex_arb(arb.upper(), False)
 
 async def ex_trade(pair, side, quantity):
     trade_url = 'https://api.binance.com/api/v3/order'
@@ -388,66 +379,59 @@ async def ex_trade(pair, side, quantity):
         logger.exception(err)
         sys.exit()
 
-async def ex_arb(arb, is_regular, sl_wp, tl_wp):
+async def ex_arb(arb, is_regular):
     global is_trading
     global balance
     global arbitrage_book
     global btc_book
     is_trading = True
     pairs = ['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']
-    balances_hash = [str(balance), 0, 0]
+    quantity_hash = [str(balance), 0, 0]
 
     for i, pair in enumerate(pairs):
         if i == 0:
-            trade_response = await ex_trade(pair, 'BUY', balances_hash[0])
+            trade_response = await ex_trade(pair, 'BUY', quantity_hash[0])
         elif i == 1:
-            trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', balances_hash[1])
+            trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', quantity_hash[1])
         elif i == 2:
-            trade_response = await ex_trade(pair, 'SELL', balances_hash[2])
+            trade_response = await ex_trade(pair, 'SELL', quantity_hash[2])
         log_msg = '{} params : '.format(pair) + str(trade_response['params']) + ' | trade response: ' + str(trade_response['content'])
         logger.info(log_msg)
         if trade_response['status_code'] == 200:
             try:
                 if i == 0:
                     if is_regular:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
                     else:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * sl_wp))
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(sl_wp)
+                        # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * sl_wp))
+                        # log_msg = 'Weighted Price used for next quantity hash: {}'.format(sl_wp)
+                        # logger.info(log_msg)
+
+                        wp = getWeightedPrice(arbitrage_book[arb]['orderbooks'][arb.lower() + 'btc']['b'][:25], float(trade_response['content']['executedQty']), reverse=False)
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
                         logger.info(log_msg)
-
-                        # wp = getWeightedPrice(arbitrage_book[arb]['orderbooks'][arb.lower() + 'btc']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
-                        # balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
-                        # log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
-                        # logger.info(log_msg)
-
-                        # balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc']))
-                        # log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc'])
-                        # logger.info(log_msg)
                 elif i == 1:
                     if is_regular:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * tl_wp))
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(tl_wp)
-                        logger.info(log_msg)
-
-                        # wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'usdt']['b'][:10], reverse=False)
-                        # balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
-                        # log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
+                        # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * tl_wp))
+                        # log_msg = 'Weighted Price used for next quantity hash: {}'.format(tl_wp)
                         # logger.info(log_msg)
 
-                        # balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt']))
+                        wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'usdt']['b'][:10], float(trade_response['content']['executedQty']), reverse=False)
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
+                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
+                        logger.info(log_msg)
+
+                        # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt']))
                         # log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt'])
                         # logger.info(log_msg)
                     else:
-                        balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * tl_wp))
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(tl_wp)
-                        logger.info(log_msg)
-
-                        # wp = getWeightedPrice(btc_book['orderbook']['b'], reverse=True)
-
-                        # balances_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * btc_book['weighted_prices']['reverse']))
-                        # log_msg = 'Weighted Price used for next quantity hash: {}'.format(btc_book['weighted_prices']['reverse'])
+                        # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * tl_wp))
+                        # log_msg = 'Weighted Price used for next quantity hash: {}'.format(tl_wp)
                         # logger.info(log_msg)
+
+                        wp = getWeightedPrice(btc_book['orderbook']['b'], reverse=True)
+
                 else:
                     # balance = await get_balance('USDT')
                     balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
@@ -464,6 +448,86 @@ async def ex_arb(arb, is_regular, sl_wp, tl_wp):
             is_trading = False
             sys.exit()
             break
+
+
+
+
+# async def ex_arb(arb, is_regular, sl_wp, tl_wp):
+#     global is_trading
+#     global balance
+#     global arbitrage_book
+#     global btc_book
+#     is_trading = True
+#     pairs = ['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']
+#     quantity_hash = [str(balance), 0, 0]
+#
+#     for i, pair in enumerate(pairs):
+#         if i == 0:
+#             trade_response = await ex_trade(pair, 'BUY', quantity_hash[0])
+#         elif i == 1:
+#             trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', quantity_hash[1])
+#         elif i == 2:
+#             trade_response = await ex_trade(pair, 'SELL', quantity_hash[2])
+#         log_msg = '{} params : '.format(pair) + str(trade_response['params']) + ' | trade response: ' + str(trade_response['content'])
+#         logger.info(log_msg)
+#         if trade_response['status_code'] == 200:
+#             try:
+#                 if i == 0:
+#                     if is_regular:
+#                         quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
+#                     else:
+#                         quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * sl_wp))
+#                         log_msg = 'Weighted Price used for next quantity hash: {}'.format(sl_wp)
+#                         logger.info(log_msg)
+#
+#                         # wp = getWeightedPrice(arbitrage_book[arb]['orderbooks'][arb.lower() + 'btc']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
+#                         # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
+#                         # log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
+#                         # logger.info(log_msg)
+#
+#                         # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc']))
+#                         # log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['reverse']['weighted_prices'][arb.lower() + 'btc'])
+#                         # logger.info(log_msg)
+#                 elif i == 1:
+#                     if is_regular:
+#                         quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * tl_wp))
+#                         log_msg = 'Weighted Price used for next quantity hash: {}'.format(tl_wp)
+#                         logger.info(log_msg)
+#
+#                         # wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'usdt']['b'][:10], reverse=False)
+#                         # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
+#                         # log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
+#                         # logger.info(log_msg)
+#
+#                         # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt']))
+#                         # log_msg = 'Weighted Price used for next quantity hash: {}'.format(arbitrage_book[arb.lower()]['regular']['weighted_prices'][arb.lower() + 'usdt'])
+#                         # logger.info(log_msg)
+#                     else:
+#                         quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * tl_wp))
+#                         log_msg = 'Weighted Price used for next quantity hash: {}'.format(tl_wp)
+#                         logger.info(log_msg)
+#
+#                         # wp = getWeightedPrice(btc_book['orderbook']['b'], reverse=True)
+#
+#                         # quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * btc_book['weighted_prices']['reverse']))
+#                         # log_msg = 'Weighted Price used for next quantity hash: {}'.format(btc_book['weighted_prices']['reverse'])
+#                         # logger.info(log_msg)
+#                 else:
+#                     # balance = await get_balance('USDT')
+#                     balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
+#                     # print(balance)
+#                     logger.info('Trades for {} arb were successful'.format(arb))
+#                     is_trading = False
+#                     # print(balance)
+#                     sys.exit()
+#             except Exception as err:
+#                 logger.exception(err)
+#                 sys.exit()
+#         else:
+#             logger.info('Status code error: {}'.format(trade_response['status_code']))
+#             is_trading = False
+#             sys.exit()
+#             break
 
 
 
