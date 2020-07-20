@@ -339,10 +339,10 @@ async def populateArb():
                 arbitrage_book[arb]['regular']['triangle_values'] = np.divide(np.subtract(arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'], regular_arb_price), regular_arb_price)
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
 
-                # if arbitrage_book[arb]['regular']['triangle_values'] > 0 and is_trading == False:
-                #     logger.info('Executing the arb trade for regular {}. Arb value is {}'.format(arb, arbitrage_book[arb]['regular']['triangle_values']))
-                #     await ex_arb(arb.upper(), True)
-                if arbitrage_book[arb]['reverse']['triangle_values'] > 0 and is_trading == False:
+                if arbitrage_book[arb]['regular']['triangle_values'] > 0 and is_trading == False:
+                    logger.info('Executing the arb trade for regular {}. Arb value is {}'.format(arb, arbitrage_book[arb]['regular']['triangle_values']))
+                    await ex_arb(arb.upper(), True)
+                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0 and is_trading == False:
                     logger.info('Executing the arb trade for reverse {}. Arb value is {}'.format(arb, arbitrage_book[arb]['reverse']['triangle_values']))
                     await ex_arb(arb.upper(), False)
                 else:
