@@ -148,6 +148,7 @@ async def get_balance(quote):
                 balances = [x for x in json_content['balances'] if float(x['free']) != 0]
                 return round_quote_precision([float(x['free']) for x in balances if x['asset'] == quote][0])
 
+
 def getWeightedPrice(orders, balance, reverse=False):
     volume = 0
     price = 0
@@ -466,6 +467,9 @@ async def main():
     global balance
     global stepSizes
     balance = await get_balance('USDT')
+    if balance < 10:
+        logger.info('USDT balance is less than $10')
+        sys.exit()
     coroutines = []
     coroutines.append(subscribe())
     coroutines.append(fullBookTimer())
