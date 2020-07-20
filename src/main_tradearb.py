@@ -403,7 +403,7 @@ async def ex_arb(arb, is_regular, sl_wp, tl_wp):
                     balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
                     logger.info('Trades for {} arb were successful'.format(arb))
                     is_trading = False
-                    sys.exit()
+                    # sys.exit()
             except Exception as err:
                 logger.exception(err)
                 sys.exit()
