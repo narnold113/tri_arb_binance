@@ -401,7 +401,7 @@ async def ex_arb(arb, is_regular):
                     else:
                         leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['executedQty'])
 
-                    balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
+                    balance = round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999)
                     logger.info('Trades for {} arb were successful'.format(arb))
                     logger.info('USDT balance before: {} and after: {}'.format(quantity_hash[0], balance))
                     logger.info('BTC leakage: {} | {} leakage: {}'.format(leakage_hash['btc'], arb, leakage_hash[arb]))
