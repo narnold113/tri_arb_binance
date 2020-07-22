@@ -168,11 +168,13 @@ async def get_market_data():
 
 async def main():
     try:
+        now = time.time()
         # balance = await get_balance('USDT')
         mdata = await get_market_data()
     except Exception as err:
         print(err)
     print(mdata)
+    print(time.time() - now)
 
 if __name__ == "__main__":
     try:
