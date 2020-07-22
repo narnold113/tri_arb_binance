@@ -129,18 +129,33 @@ def create_signed_params(symbol, side, quantity):
         'timestamp': timestamp,
         'signature': signature
     }
-#
-# async def get_stepsizes():
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get('https://api.binance.com/api/v3/exchangeInfo') as resp:
-#             json_res = await resp.json()
-#             if json_res is not None:
-#                 symbolsInfo = json_res['symbols']
-#                 symbolsInfo = [x for x in symbolsInfo if x['symbol'].lower() in PAIRS]
-#                 return {
-#                     symbol['symbol']: float(symbol['filters'][2]['stepSize'])
-#                     for symbol in symbolsInfo
-#                 }
+
+async def get_stepsizes():
+    async with aiohttp.ClientSession() as session:
+        async with session.get('https://api.binance.com/api/v3/exchangeInfo') as resp:
+            json_res = await resp.json()
+            if json_res is not None:
+                symbolsInfo = json_res['symbols']
+                symbolsInfo = [x for x in symbolsInfo if x['symbol'].lower() in PAIRS]
+                return {
+                    symbol['symbol']: float(symbol['filters'][2]['stepSize'])
+                    for symbol in symbolsInfo
+                }
+
+async def reset_balance():
+    global APIKEY
+    global SECRETKEY
+    url = "https://api.binance.com/api/v3/account"
+    header = {'X-MBX-APIKEY': APIKEY}
+    timestamp = int(round(time.time() * 1000))
+    recvWindow = 10_000
+    query_string = 'recvWindow={}&timestamp={}'.format(recvWindow, timestamp)
+    signature = hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
+    params = {
+        'recvWindow': recvWindow,
+        'timestamp': timestamp,
+        'signature': signature
+    }
 
 async def get_balance(quote):
     global APIKEY
