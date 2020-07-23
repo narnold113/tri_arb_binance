@@ -165,10 +165,12 @@ async def get_market_data():
             if json_content is not None and resp.status == 200:
                 return json_content[0]
 
+# async def ex_testorder():
+
 
 async def main():
     try:
-        if input("Balance or Market? ") == 'BALANCE':
+        if input("Balance or Market? ").upper() == 'BALANCE':
             now = time.time()
             balance = await get_balance('USDT')
             print(balance)
