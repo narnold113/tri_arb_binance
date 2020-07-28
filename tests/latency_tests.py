@@ -67,8 +67,7 @@ async def ex_limitorder(symbol, side, quantity, price):
                 if json_res is not None:
                     return {'content': json_res, 'status_code': resp.status, 'params': params}
     except Exception as err:
-        logger.exception(err)
-        sys.exit()
+        print(err)
 
 
 async def main():
@@ -84,7 +83,7 @@ async def main():
             print(mdata)
         elif method == 'O':
             now = time.time()
-            print(await ex_limitorder('XRPUSDT', 'BUY', 100, 0.199))
+            print(await ex_limitorder('XRPUSDT', 'BUY', '100', '0.199'))
     except Exception as err:
         print(err)
     print(time.time() - now)
