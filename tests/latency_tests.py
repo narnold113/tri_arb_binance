@@ -4,6 +4,7 @@ import hmac
 import hashlib
 import os
 import time
+from statistics import mean
 APIKEY = str(os.environ["BIN_API"])
 SECRETKEY = str(os.environ["BIN_SECRET"])
 
@@ -22,6 +23,29 @@ def create_signed_params(symbol, side, quantity, price):
         'signature': hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
     }
 
+async def cancel_orders(symbol):
+    global APIKEY
+    global SECRETKEY
+    url = 'https://api.binance.com/api/v3/openOrders'
+    header = {'X-MBX-APIKEY': APIKEY}
+    timestamp = int(round(time.time() * 1000))
+    query_string = 'symbol={}&timestamp={}'.format(symbol, timestamp)
+    params = {
+        'symbol': symbol,
+        'timestamp': timestamp,
+        'signature': hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.delete(url=url,
+                                      headers=header,
+                                      params=params) as resp:
+                json_content = await resp.json()
+                # print(json_content)
+                if json_content is not None and resp.status == 200:
+                    return json_content
+    except Exception as err:
+        print(err)
 
 async def get_balance(quote):
     global APIKEY
@@ -70,23 +94,50 @@ async def ex_limitorder(symbol, side, quantity, price):
         print(err)
 
 
+async def tests():
+    order_latency = []
+    delete_latency = []
+    for i in range(1, 11):
+        await asyncio.sleep(2)
+
+        now = time.time()
+        print(await ex_limitorder('XRPUSDT', 'BUY', '100', '0.199'))
+        order_latency.append(time.time() - now)
+
+        await asyncio.sleep(2)
+
+        now = time.time()
+        print(await cancel_orders('XRPUSDT'))
+        delete_latency.append(time.time() - now)
+    return {
+        'order_latency': order_latency,
+        'delete_latency': delete_latency
+    }
+
+
+
 async def main():
+    # try:
+    #     print(await cancel_orders('XRPUSDT'))
+    # except Exception as err:
+    #     print(err)
     method = input("Balance, Market or order? ").upper()
     try:
         if method == 'B':
             now = time.time()
             balance = await get_balance('USDT')
+            print(time.time() - now)
             print(balance)
         elif method == 'M':
             now = time.time()
             mdata = await get_market_data()
+            print(time.time() - now)
             print(mdata)
         elif method == 'O':
-            now = time.time()
-            print(await ex_limitorder('XRPUSDT', 'BUY', '100', '0.199'))
+            latency_dict = await tests()
+            print('Order latency average: {}\nDelete latency average: {}'.format(mean(latency_dict['order_latency']), mean(latency_dict['delete_latency'])))
     except Exception as err:
         print(err)
-    print(time.time() - now)
 
 if __name__ == "__main__":
     try:
