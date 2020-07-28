@@ -83,11 +83,8 @@ async def main():
             mdata = await get_market_data()
             print(mdata)
         elif method == 'O':
-            symbol = input('symbol: ').upper()
-            quantity = input('quantity: ')
-            price = input('price: ')
             now = time.time()
-            print(await ex_limitorder(symbol, 'BUY', quantity, price))
+            print(await ex_limitorder('XRPUSDT', 'BUY', 100, 0.199))
     except Exception as err:
         print(err)
     print(time.time() - now)
