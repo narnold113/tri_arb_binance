@@ -24,9 +24,9 @@ logger.addHandler(logHandler)
 
 APIKEY = str(os.environ["BIN_API"])
 SECRETKEY = str(os.environ["BIN_SECRET"])
+ARBLIMIT = float(os.environ["ARB_LIMIT"])
 is_trading = False
 balance = 0
-stepSizes = {}
 build_list = []
 
 ARBS = [
@@ -47,6 +47,14 @@ ARBS = [
     ,'neo'
     ,'xlm'
     ,'zec'
+    ,'erd'
+    ,'xtz'
+    ,'sxp'
+    ,'chz'
+    ,'fet'
+    ,'ont'
+    ,'knc'
+    ,'chr'
     # ,'dash'
 ]
 SIDES = [
@@ -296,6 +304,7 @@ async def populateArb():
     global btc_book
     global balance
     global is_trading
+    global ARBLIMIT
     while 1:
         await asyncio.sleep(0.003)
         try:
@@ -321,10 +330,10 @@ async def populateArb():
                 arbitrage_book[arb]['regular']['triangle_values'] = np.divide(np.subtract(arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'], regular_arb_price), regular_arb_price)
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
 
-                if arbitrage_book[arb]['regular']['triangle_values'] > 0.007 and is_trading == False:
+                if arbitrage_book[arb]['regular']['triangle_values'] > ARBLIMIT and is_trading == False:
                     logger.info('Executing the arb trade for regular {}. Arb value is {}'.format(arb, arbitrage_book[arb]['regular']['triangle_values']))
                     await ex_arb(arb.upper(), True)
-                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0.007 and is_trading == False:
+                elif arbitrage_book[arb]['reverse']['triangle_values'] > ARBLIMIT and is_trading == False:
                     logger.info('Executing the arb trade for reverse {}. Arb value is {}'.format(arb, arbitrage_book[arb]['reverse']['triangle_values']))
                     await ex_arb(arb.upper(), False)
                 else:
@@ -467,7 +476,6 @@ async def fullBookTimer():
 
 async def main():
     global balance
-    global stepSizes
     balance = await get_balance('USDT')
     if balance < 10:
         logger.info('USDT balance is less than $10')
