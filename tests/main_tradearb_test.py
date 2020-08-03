@@ -11,6 +11,7 @@ import os
 import hmac
 import hashlib
 import math
+import get_arbs_test
 from datetime import datetime
 
 logger = logging.getLogger('tri_arb_binance')
@@ -338,7 +339,7 @@ async def populateArb():
             # print(btc_book['weighted_prices']['regular'])
 
             for arb in ARBS:
-                pair_iterator = [pair for pair in PAIRS if pair[:3] == arb]
+                pair_iterator = [pair for pair in PAIRS if pair[:len(arb)] == arb]
                 for pair in sorted(pair_iterator, reverse=True):
                     arb_ob = arbitrage_book[arb]['orderbooks'][pair]
                     if pair[-4:] == 'usdt':
@@ -598,8 +599,8 @@ async def main():
     global balance
     global stepSizes
     balance = await get_balance('USDT')
-    print(await get_balance('BTC'))
-    print(await get_balance('ETH'))
+    # print(await get_balance('BTC'))
+    # print(await get_balance('ETH'))
     # stepSizes = await get_stepsizes()
     # print(balance)
     # print(stepSizes)

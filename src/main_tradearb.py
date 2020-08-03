@@ -11,6 +11,7 @@ import os
 import hmac
 import hashlib
 import math
+import get_arbs
 from datetime import datetime
 
 logger = logging.getLogger('tri_arb_binance')
@@ -25,7 +26,7 @@ logger.addHandler(logHandler)
 APIKEY = str(os.environ["BIN_API"])
 SECRETKEY = str(os.environ["BIN_SECRET"])
 # ARBLIMIT = float(os.environ["ARB_LIMIT"])
-ARBLIMIT = 0.01
+ARBLIMIT = 0.018
 is_trading = False
 balance = 0
 build_list = []

@@ -342,6 +342,20 @@
 
 
 
+import get_arbs_test
+
+list = get_arbs_test.get_arbs()
+print(list)
+
+
+
+
+
+
+
+
+
+
 
 
 
