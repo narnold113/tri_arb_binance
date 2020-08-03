@@ -11,7 +11,7 @@ import os
 import hmac
 import hashlib
 import math
-import get_arbs
+# import get_arbs
 from datetime import datetime
 
 logger = logging.getLogger('tri_arb_binance')
