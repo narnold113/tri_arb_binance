@@ -194,7 +194,7 @@ async def subscribe() -> None:
     params = json.loads(strParams)
     params['params'] = STREAMS
     try:
-        async with websockets.client.connect(url, max_queue=None) as ws:
+        async with websockets.client.connect(url, max_queue=None, max_size=None, pong_interval=60) as ws:
             try:
                 await ws.send(str(params).replace('\'', '"'))
             except Exception as err:
