@@ -234,15 +234,15 @@ async def buildBook(pair):
                     btc_book['orderbook']['a'] = np.array(json_snapshot['asks'], np.float64)
                     btc_book['orderbook']['b'] = np.array(json_snapshot['bids'], np.float64)
                     build_list.append(pair)
-                    logger.info('Filled btc_book successfully')
+                    # logger.info('Filled btc_book successfully')
                 else:
                     arbitrage_book[arb]['orderbooks'][pair]['lastUpdateId'] = json_snapshot['lastUpdateId']
                     arbitrage_book[arb]['orderbooks'][pair]['a'] = np.array(json_snapshot['asks'], np.float64)
                     arbitrage_book[arb]['orderbooks'][pair]['b'] = np.array(json_snapshot['bids'], np.float64)
                     build_list.append(pair)
                     # print('Filled', pair, 'orderbook successfully')
-                    log_msq = 'Filled ' + pair + ' orderbook successfully'
-                    logger.info(log_msq)
+                    # log_msq = 'Filled ' + pair + ' orderbook successfully'
+                    # logger.info(log_msq)
             else:
                 logger.info('Failed to get snapshot response. Here is the http-response status code', response.status)
                 sys.exit()
@@ -473,7 +473,7 @@ async def fullBookTimer():
         try:
             check = all(item in build_list for item in PAIRS)
             if check:
-                logger.info('Awaiting populateArb')
+                logger.info('All orderbooks successfully filled. Awaiting populateArb')
                 # await asyncio.wait([populateArb(), arb_monitor(), stillAlive()])
                 await asyncio.wait([populateArb(), stillAlive()])
             else:
