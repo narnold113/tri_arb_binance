@@ -30,26 +30,29 @@ balance = 0
 stepSizes = {}
 build_list = []
 
-ARBS = [
-    'eth' # OK
-    # ,'ltc' # OK
-    # ,'xrp' # OK
-    # ,'bch' # OK
-    # ,'eos' # OK
-    # ,'xmr' # OK
-    # ,'etc' # OK
-    # ,'zrx' # OK
-    # ,'trx'
-    # ,'bnb'
-    # ,'ada'
-    # ,'vet'
-    # # ,'link'
-    # ,'zil'
-    # ,'neo'
-    # ,'xlm'
-    # ,'zec'
-    # ,'dash'
-]
+ARBS = get_arbs_test.get_arbs()
+# print(ARBS1)
+
+# ARBS = [
+#     'eth' # OK
+#     # ,'ltc' # OK
+#     # ,'xrp' # OK
+#     # ,'bch' # OK
+#     # ,'eos' # OK
+#     # ,'xmr' # OK
+#     # ,'etc' # OK
+#     # ,'zrx' # OK
+#     # ,'trx'
+#     # ,'bnb'
+#     # ,'ada'
+#     # ,'vet'
+#     # # ,'link'
+#     # ,'zil'
+#     # ,'neo'
+#     # ,'xlm'
+#     # ,'zec'
+#     # ,'dash'
+# ]
 SIDES = [
     'a',
     'b'
@@ -84,19 +87,19 @@ arbitrage_book = {
                 'a': np.array([[np.nan, np.nan]]),
                 'b': np.array([[np.nan, np.nan]])
             }
-            for pair in PAIRS if pair[:3] == arb
+            for pair in PAIRS if pair[0:len(arb)] == arb
         },
         'regular': { ### Regular arbitrage order: buy BTC/USD, buy ALT/BTC and sell ALT/USD. For buys, we calculate weighted price on the "ask" side ###
             'weighted_prices': {
                 pair: 0
-                for pair in PAIRS if pair[:3] == arb
+                for pair in PAIRS if pair[0:len(arb)] == arb
             },
             'triangle_values': []
         },
         'reverse': { ### Reverse arbitrage order: sell BTC/USD, sell ALT/BTC and buy ALT/USD. For sells, we consume the "bid" side of the orderbook ###
             'weighted_prices': {
                 pair: 0
-                for pair in PAIRS if pair[:3] == arb
+                for pair in PAIRS if pair[0:len(arb)] == arb
             },
             'triangle_values': [],
             'amount_if_bought': 0
@@ -104,7 +107,7 @@ arbitrage_book = {
     }
     for arb in ARBS
 }
-
+# print(arbitrage_book)
 
 ### Helper functions ###
 def round_lot_precision(symbol, number):
@@ -243,7 +246,11 @@ async def subscribe() -> None:
 
 
 async def buildBook(pair):
-    arb = pair[:3]
+    if pair[-3:] == 'btc':
+        arb = pair[0:len(pair) - 3]
+    elif pair[-4:] == 'usdt':
+        arb = pair[0:len(pair) - 4]
+    # arb = pair[:3]
     async with aiohttp.ClientSession() as session:
         async with session.get('https://www.binance.com/api/v3/depth?symbol={}&limit=500'.format(pair.upper())) as response:
             if response.status == 200:
@@ -275,7 +282,10 @@ async def updateBook(res):
         json_res = json.loads(res)
         if 'stream' in json_res.keys():
             pair = json_res['data']['s'].lower()
-            arb = pair[:3]
+            if pair[-3:] == 'btc':
+                arb = pair[0:len(pair) - 3]
+            elif pair[-4:] == 'usdt':
+                arb = pair[0:len(pair) - 4]
             firstUpdateId = json_res["data"]["U"]
             finalUpdateId = json_res["data"]["u"]
 
@@ -355,10 +365,10 @@ async def populateArb():
                 arbitrage_book[arb]['regular']['triangle_values'] = np.divide(np.subtract(arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'], regular_arb_price), regular_arb_price)
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
 
-                if arbitrage_book[arb]['regular']['triangle_values'] > 0 and is_trading == False:
+                if arbitrage_book[arb]['regular']['triangle_values'] > 0.01 and is_trading == False:
                     logger.info('Executing the arb trade for regular {}. Arb value is {}'.format(arb, arbitrage_book[arb]['regular']['triangle_values']))
                     await ex_arb(arb.upper(), True)
-                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0 and is_trading == False:
+                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0.01 and is_trading == False:
                     logger.info('Executing the arb trade for reverse {}. Arb value is {}'.format(arb, arbitrage_book[arb]['reverse']['triangle_values']))
                     await ex_arb(arb.upper(), False)
                 else:
@@ -577,7 +587,7 @@ async def printBook():
 async def fullBookTimer():
     global build_list
     global balance
-    print(balance)
+    # print(balance)
     while 1:
         await asyncio.sleep(1)
         try:

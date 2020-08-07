@@ -11,7 +11,7 @@ import os
 import hmac
 import hashlib
 import math
-# import get_arbs
+import get_arbs
 from datetime import datetime
 
 logger = logging.getLogger('tri_arb_binance')
@@ -31,34 +31,36 @@ is_trading = False
 balance = 0
 build_list = []
 
-ARBS = [
-    'eth' # OK
-    ,'ltc' # OK
-    ,'xrp' # OK
-    ,'bch' # OK
-    ,'eos' # OK
-    ,'xmr' # OK
-    ,'etc' # OK
-    ,'zrx' # OK
-    ,'trx'
-    ,'bnb'
-    ,'ada'
-    ,'vet'
-    # ,'link'
-    ,'zil'
-    ,'neo'
-    ,'xlm'
-    ,'zec'
-    ,'erd'
-    ,'xtz'
-    ,'sxp'
-    ,'chz'
-    ,'fet'
-    ,'ont'
-    ,'knc'
-    ,'chr'
-    # ,'dash'
-]
+ARBS = get_arbs.get_arbs()
+
+# ARBS = [
+#     'eth' # OK
+#     ,'ltc' # OK
+#     ,'xrp' # OK
+#     ,'bch' # OK
+#     ,'eos' # OK
+#     ,'xmr' # OK
+#     ,'etc' # OK
+#     ,'zrx' # OK
+#     ,'trx'
+#     ,'bnb'
+#     ,'ada'
+#     ,'vet'
+#     ,'link'
+#     ,'zil'
+#     ,'neo'
+#     ,'xlm'
+#     ,'zec'
+#     ,'erd'
+#     ,'xtz'
+#     ,'sxp'
+#     ,'chz'
+#     ,'fet'
+#     ,'ont'
+#     ,'knc'
+#     ,'chr'
+#     ,'dash'
+# ]
 SIDES = [
     'a',
     'b'
@@ -93,19 +95,19 @@ arbitrage_book = {
                 'a': np.array([[np.nan, np.nan]]),
                 'b': np.array([[np.nan, np.nan]])
             }
-            for pair in PAIRS if pair[:3] == arb
+            for pair in PAIRS if pair[0:len(arb)] == arb
         },
         'regular': { ### Regular arbitrage order: buy BTC/USD, buy ALT/BTC and sell ALT/USD. For buys, we calculate weighted price on the "ask" side ###
             'weighted_prices': {
                 pair: 0
-                for pair in PAIRS if pair[:3] == arb # or pair == 'BTCUSD'
+                for pair in PAIRS if pair[0:len(arb)] == arb # or pair == 'BTCUSD'
             },
             'triangle_values': []
         },
         'reverse': { ### Reverse arbitrage order: sell BTC/USD, sell ALT/BTC and buy ALT/USD. For sells, we consume the "bid" side of the orderbook ###
             'weighted_prices': {
                 pair: 0
-                for pair in PAIRS if pair[:3] == arb # or pair == 'BTCUSD'
+                for pair in PAIRS if pair[0:len(arb)] == arb # or pair == 'BTCUSD'
             },
             'triangle_values': [],
             'amount_if_bought': 0
@@ -219,7 +221,10 @@ async def subscribe() -> None:
         sys.exit()
 
 async def buildBook(pair):
-    arb = pair[:3]
+    if pair[-3:] == 'btc':
+        arb = pair[0:len(pair) - 3]
+    elif pair[-4:] == 'usdt':
+        arb = pair[0:len(pair) - 4]
     async with aiohttp.ClientSession() as session:
         async with session.get('https://www.binance.com/api/v3/depth?symbol={}&limit=500'.format(pair.upper())) as response:
             if response.status == 200:
@@ -251,7 +256,10 @@ async def updateBook(res):
         json_res = json.loads(res)
         if 'stream' in json_res.keys():
             pair = json_res['data']['s'].lower()
-            arb = pair[:3]
+            if pair[-3:] == 'btc':
+                arb = pair[0:len(pair) - 3]
+            elif pair[-4:] == 'usdt':
+                arb = pair[0:len(pair) - 4]
             firstUpdateId = json_res["data"]["U"]
             finalUpdateId = json_res["data"]["u"]
 
@@ -316,7 +324,7 @@ async def populateArb():
             # print(btc_book['weighted_prices']['regular'])
 
             for arb in ARBS:
-                pair_iterator = [pair for pair in PAIRS if pair[:3] == arb]
+                pair_iterator = [pair for pair in PAIRS if pair[0:len(arb)] == arb]
                 for pair in sorted(pair_iterator, reverse=True):
                     arb_ob = arbitrage_book[arb]['orderbooks'][pair]
                     if pair[-4:] == 'usdt':
@@ -342,6 +350,7 @@ async def populateArb():
                     continue
 
             # print(arbitrage_book['eth']['regular']['triangle_values'])
+            # print(is_trading)
         except Exception as err:
             logger.exception(err)
             sys.exit()

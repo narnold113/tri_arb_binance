@@ -1,6 +1,4 @@
 import requests
-import asyncio
-import aiohttp
 
 def url_handler(url):
     return requests.get(url).json()
