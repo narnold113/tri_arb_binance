@@ -226,7 +226,7 @@ async def buildBook(pair):
     elif pair[-4:] == 'usdt':
         arb = pair[0:len(pair) - 4]
     async with aiohttp.ClientSession() as session:
-        async with session.get('https://www.binance.com/api/v3/depth?symbol={}&limit=500'.format(pair.upper())) as response:
+        async with session.get('https://www.binance.com/api/v3/depth?symbol={}&limit=100'.format(pair.upper())) as response:
             if response.status == 200:
                 json_snapshot = await response.json()
                 if pair == 'btcusdt':
