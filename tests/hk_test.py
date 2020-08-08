@@ -11,7 +11,7 @@ import os
 import hmac
 import hashlib
 import math
-import get_arbs
+import get_arbs_test
 from datetime import datetime
 
 logger = logging.getLogger('tri_arb_binance')
@@ -31,7 +31,7 @@ is_trading = False
 balance = 0
 build_list = []
 
-ARBS = get_arbs.get_arbs()
+ARBS = get_arbs_test.get_arbs()
 
 # ARBS = [
 #     'eth' # OK
