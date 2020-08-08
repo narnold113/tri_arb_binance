@@ -340,10 +340,10 @@ async def populateArb():
                 arbitrage_book[arb]['regular']['triangle_values'] = np.divide(np.subtract(arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'], regular_arb_price), regular_arb_price)
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
 
-                if arbitrage_book[arb]['regular']['triangle_values'] > 0 and is_trading == False:
+                if arbitrage_book[arb]['regular']['triangle_values'] > 0.02 and is_trading == False:
                     logger.info('Executing the arb trade for regular {}. Arb value is {}'.format(arb, arbitrage_book[arb]['regular']['triangle_values']))
                     await ex_arb(arb.upper(), True)
-                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0 and is_trading == False:
+                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0.02 and is_trading == False:
                     logger.info('Executing the arb trade for reverse {}. Arb value is {}'.format(arb, arbitrage_book[arb]['reverse']['triangle_values']))
                     await ex_arb(arb.upper(), False)
                 else:
@@ -426,7 +426,7 @@ async def ex_arb(arb, is_regular):
                     logger.info('USDT balance before: {} and after: {}'.format(quantity_hash[0], balance))
                     logger.info('BTC leakage: {} | {} leakage: {}'.format(leakage_hash['btc'], arb, leakage_hash[arb]))
                     is_trading = False
-                    sys.exit()
+                    # sys.exit()
             except Exception as err:
                 logger.exception(err)
                 sys.exit()
