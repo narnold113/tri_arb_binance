@@ -32,29 +32,29 @@ balance = 0
 stepSizes = {}
 build_list = []
 
-ARBS = get_arbs_test.get_arbs()
+# ARBS = get_arbs_test.get_arbs()
 # print(ARBS1)
 
-# ARBS = [
-#     'eth' # OK
-#     # ,'ltc' # OK
-#     # ,'xrp' # OK
-#     # ,'bch' # OK
-#     # ,'eos' # OK
-#     # ,'xmr' # OK
-#     # ,'etc' # OK
-#     # ,'zrx' # OK
-#     # ,'trx'
-#     # ,'bnb'
-#     # ,'ada'
-#     # ,'vet'
-#     # # ,'link'
-#     # ,'zil'
-#     # ,'neo'
-#     # ,'xlm'
-#     # ,'zec'
-#     # ,'dash'
-# ]
+ARBS = [
+    'eth' # OK
+    # ,'ltc' # OK
+    # ,'xrp' # OK
+    # ,'bch' # OK
+    # ,'eos' # OK
+    # ,'xmr' # OK
+    # ,'etc' # OK
+    # ,'zrx' # OK
+    # ,'trx'
+    # ,'bnb'
+    # ,'ada'
+    # ,'vet'
+    # # ,'link'
+    # ,'zil'
+    # ,'neo'
+    # ,'xlm'
+    # ,'zec'
+    # ,'dash'
+]
 SIDES = [
     'a',
     'b'
@@ -268,7 +268,7 @@ async def buildBook(pair):
                     arbitrage_book[arb]['orderbooks'][pair]['a'] = np.array(json_snapshot['asks'], np.float64)
                     arbitrage_book[arb]['orderbooks'][pair]['b'] = np.array(json_snapshot['bids'], np.float64)
                     build_list.append(pair)
-                    # print('Filled', pair, 'orderbook successfully')
+                    print('Filled', pair, 'orderbook successfully')
                     log_msq = 'Filled ' + pair + ' orderbook successfully'
                     logger.info(log_msq)
             else:
@@ -373,13 +373,11 @@ async def populateArb():
                 arbitrage_book[arb]['regular']['triangle_values'] = np.divide(np.subtract(arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt'], regular_arb_price), regular_arb_price)
                 arbitrage_book[arb]['reverse']['triangle_values'] = np.divide(np.subtract(btc_book['weighted_prices']['reverse'], reverse_arb_price), reverse_arb_price)
 
-                if arbitrage_book[arb]['regular']['triangle_values'] > 0.01 and is_trading == False:
-                    logger.info('Executing the arb trade for regular {}. Arb value is {}'.format(arb, arbitrage_book[arb]['regular']['triangle_values']))
-                    logger.info('Weighted prices for the arb: {}'.format([btc_book['weighted_prices']['regular'], arbitrage_book[arb]['regular']['weighted_prices'][arb + 'btc'], arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt']]))
+                if arbitrage_book[arb]['regular']['triangle_values'] > 0 and is_trading == False:
+                    logger.info('Executing regular {}. Arb value is {}\nWeighted Prices: {}'.format(arb, arbitrage_book[arb]['regular']['triangle_values'], [btc_book['weighted_prices']['regular'], arbitrage_book[arb]['regular']['weighted_prices'][arb + 'btc'], arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt']]))
                     await ex_arb(arb.upper(), True)
-                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0.01 and is_trading == False:
-                    logger.info('Executing the arb trade for reverse {}. Arb value is {}'.format(arb, arbitrage_book[arb]['reverse']['triangle_values']))
-                    logger.info('Weighted prices for the arb: {}'.format([btc_book['weighted_prices']['reverse'], arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'btc'], arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'usdt']]))
+                elif arbitrage_book[arb]['reverse']['triangle_values'] > 0 and is_trading == False:
+                    logger.info('Executing regular {}. Arb value is {}\nWeighted Prices: {}'.format(arb, arbitrage_book[arb]['reverse']['triangle_values'], [btc_book['weighted_prices']['reverse'], arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'btc'], arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'usdt']]))
                     await ex_arb(arb.upper(), False)
                 else:
                     continue
@@ -426,6 +424,7 @@ async def ex_arb(arb, is_regular):
     # pairs = ['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']
     quantity_hash = [str(balance), 0, 0]
     leakage_hash = {}
+    # wp_hash = []
 
     for i, pair in enumerate(['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']):
         if i == 0:
@@ -437,29 +436,65 @@ async def ex_arb(arb, is_regular):
         # log_msg = 'Trade params : ' + str(trade_response['params']) + ' | trade response: ' + str(trade_response['content'])
         # logger.info(log_msg)
         logger.info('Trade Params: {} | Trade Response: {}'.format(str(trade_response['params']), str(trade_response['content'])))
+        # sys.exit()
         if trade_response['status_code'] == 200:
+            # try:
+            #     if i == 0:
+            #         if is_regular:
+            #             quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
+            #             leakage_hash['btc'] = float(trade_response['content']['executedQty']) * 0.999
+            #         else:
+            #             wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'btc']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
+            #             quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
+            #             leakage_hash[arb] = float(trade_response['content']['executedQty']) * 0.999
+            #             logger.info('Weighted Price for next quantity hash: {}'.format(wp))
+            #     elif i == 1:
+            #         if is_regular:
+            #             wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'usdt']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
+            #             quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
+            #             leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['cummulativeQuoteQty'])
+            #             leakage_hash[arb] = float(trade_response['content']['executedQty']) * 0.999
+            #             logger.info('Weighted Price for next quantity hash: {}'.format(wp))
+            #         else:
+            #             wp = getWeightedPrice(btc_book['orderbook']['b'], float(trade_response['content']['cummulativeQuoteQty']), reverse=True)
+            #             quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * wp))
+            #             leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
+            #             leakage_hash['btc'] = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
+            #             logger.info('Weighted Price for next quantity hash: {}'.format(wp))
+            #     else:
+            #         if is_regular:
+            #             leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
+            #         else:
+            #             leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['executedQty'])
+            #
+            #         balance = round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999)
+            #         logger.info('Trades for {} arb were successful \nUSDT balance before: {} and after: {} \nBTC Leakage: {} and {} Leakage: {}'.format(arb, quantity_hash[0], balance, leakage_hash['btc'], arb, leakage_hash[arb]))
+            #         is_trading = False
+            # except Exception as err:
+            #     logger.exception(err)
+            #     sys.exit()            
             try:
                 if i == 0:
                     if is_regular:
-                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
-                        leakage_hash['btc'] = float(trade_response['content']['executedQty']) * 0.999
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty'])))
+                        leakage_hash['btc'] = float(trade_response['content']['executedQty'])
                     else:
                         wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'btc']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
-                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
-                        leakage_hash[arb] = float(trade_response['content']['executedQty']) * 0.999
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * wp))
+                        leakage_hash[arb] = float(trade_response['content']['executedQty'])
                         logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                 elif i == 1:
                     if is_regular:
                         wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'usdt']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
-                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * wp))
                         leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['cummulativeQuoteQty'])
-                        leakage_hash[arb] = float(trade_response['content']['executedQty']) * 0.999
+                        leakage_hash[arb] = float(trade_response['content']['executedQty'])
                         logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                     else:
                         wp = getWeightedPrice(btc_book['orderbook']['b'], float(trade_response['content']['cummulativeQuoteQty']), reverse=True)
-                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * wp))
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * wp))
                         leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
-                        leakage_hash['btc'] = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
+                        leakage_hash['btc'] = float(trade_response['content']['cummulativeQuoteQty'])
                         logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                 else:
                     if is_regular:
@@ -467,7 +502,7 @@ async def ex_arb(arb, is_regular):
                     else:
                         leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['executedQty'])
 
-                    balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
+                    balance = float(trade_response['content']['cummulativeQuoteQty'])
                     logger.info('Trades for {} arb were successful \nUSDT balance before: {} and after: {} \nBTC Leakage: {} and {} Leakage: {}'.format(arb, quantity_hash[0], balance, leakage_hash['btc'], arb, leakage_hash[arb]))
                     # logger.info('USDT balance before: {} and after: {}'.format(quantity_hash[0], balance))
                     # logger.info('BTC leakage: {} | {} leakage: {}'.format(leakage_hash['btc'], arb, leakage_hash[arb]))

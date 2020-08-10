@@ -34,6 +34,7 @@ balance = 0
 build_list = []
 
 ARBS = get_arbs.get_arbs()
+logger.info('Number of ARBS: {}'.format(len(ARBS)))
 SIDES = [
     'a',
     'b'
@@ -352,25 +353,25 @@ async def ex_arb(arb, is_regular):
             try:
                 if i == 0:
                     if is_regular:
-                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999))
-                        leakage_hash['btc'] = float(trade_response['content']['executedQty']) * 0.999
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty'])))
+                        leakage_hash['btc'] = float(trade_response['content']['executedQty'])
                     else:
                         wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'btc']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
-                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
-                        leakage_hash[arb] = float(trade_response['content']['executedQty']) * 0.999
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * wp))
+                        leakage_hash[arb] = float(trade_response['content']['executedQty'])
                         logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                 elif i == 1:
                     if is_regular:
                         wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'usdt']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
-                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * wp))
                         leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['cummulativeQuoteQty'])
-                        leakage_hash[arb] = float(trade_response['content']['executedQty']) * 0.999
+                        leakage_hash[arb] = float(trade_response['content']['executedQty'])
                         logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                     else:
                         wp = getWeightedPrice(btc_book['orderbook']['b'], float(trade_response['content']['cummulativeQuoteQty']), reverse=True)
-                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * wp))
+                        quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * wp))
                         leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
-                        leakage_hash['btc'] = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
+                        leakage_hash['btc'] = float(trade_response['content']['cummulativeQuoteQty'])
                         logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                 else:
                     if is_regular:
@@ -378,7 +379,7 @@ async def ex_arb(arb, is_regular):
                     else:
                         leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['executedQty'])
 
-                    balance = round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999)
+                    balance = round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']))
                     logger.info('Trades for {} arb were successful \nUSDT balance before: {} and after: {} \nBTC Leakage: {} and {} Leakage: {}'.format(arb, quantity_hash[0], balance, leakage_hash['btc'], arb, leakage_hash[arb]))
                     is_trading = False
             except Exception as err:
