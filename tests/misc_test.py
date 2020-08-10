@@ -342,16 +342,28 @@
 
 
 
-import get_arbs_test
+# import get_arbs_test
+#
+# list = get_arbs_test.get_arbs()
+# print(list)
+#
+#
 
-list = get_arbs_test.get_arbs()
-print(list)
+import logging
+from statistics import mean
 
+logger = logging.getLogger('tri_arb_binance')
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
+logHandler = logging.StreamHandler()
+logHandler.setLevel(logging.INFO)
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
 
+logger.info('This is a string: {} And this is another string: {}'.format(str('123'), str('456')))
 
-
-
-
+print(mean([1,2,3,4,5]))
 
 
 

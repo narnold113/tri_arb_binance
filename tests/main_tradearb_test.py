@@ -25,6 +25,8 @@ logger.addHandler(logHandler)
 
 APIKEY = str(os.environ["BIN_API"])
 SECRETKEY = str(os.environ["BIN_SECRET"])
+trade_url = 'https://api.binance.com/api/v3/order'
+api_header = {'X-MBX-APIKEY': APIKEY}
 is_trading = False
 balance = 0
 stepSizes = {}
@@ -343,12 +345,16 @@ async def populateArb():
     while 1:
         await asyncio.sleep(0.005)
         try:
-            btc_book['weighted_prices']['regular'] = getWeightedPrice(btc_book['orderbook']['a'], balance, reverse=False)
-            btc_book['weighted_prices']['reverse'] = getWeightedPrice(btc_book['orderbook']['b'], balance, reverse=False)
-            btc_book['amount_if_bought'] = np.divide(balance, btc_book['weighted_prices']['regular'])
+            # btc_book['weighted_prices']['regular'] = getWeightedPrice(btc_book['orderbook']['a'], balance, reverse=False)
+            # btc_book['weighted_prices']['reverse'] = getWeightedPrice(btc_book['orderbook']['b'], balance, reverse=False)
+            # btc_book['amount_if_bought'] = np.divide(balance, btc_book['weighted_prices']['regular'])
             # print(btc_book['weighted_prices']['regular'])
 
             for arb in ARBS:
+                btc_book['weighted_prices']['regular'] = getWeightedPrice(btc_book['orderbook']['a'], balance, reverse=False)
+                btc_book['weighted_prices']['reverse'] = getWeightedPrice(btc_book['orderbook']['b'], balance, reverse=False)
+                btc_book['amount_if_bought'] = np.divide(balance, btc_book['weighted_prices']['regular'])
+
                 pair_iterator = [pair for pair in PAIRS if pair[:len(arb)] == arb]
                 for pair in sorted(pair_iterator, reverse=True):
                     arb_ob = arbitrage_book[arb]['orderbooks'][pair]
@@ -367,9 +373,11 @@ async def populateArb():
 
                 if arbitrage_book[arb]['regular']['triangle_values'] > 0.01 and is_trading == False:
                     logger.info('Executing the arb trade for regular {}. Arb value is {}'.format(arb, arbitrage_book[arb]['regular']['triangle_values']))
+                    logger.info('Weighted prices for the arb: {}'.format([btc_book['weighted_prices']['regular'], arbitrage_book[arb]['regular']['weighted_prices'][arb + 'btc'], arbitrage_book[arb]['regular']['weighted_prices'][arb + 'usdt']]))
                     await ex_arb(arb.upper(), True)
                 elif arbitrage_book[arb]['reverse']['triangle_values'] > 0.01 and is_trading == False:
                     logger.info('Executing the arb trade for reverse {}. Arb value is {}'.format(arb, arbitrage_book[arb]['reverse']['triangle_values']))
+                    logger.info('Weighted prices for the arb: {}'.format([btc_book['weighted_prices']['reverse'], arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'btc'], arbitrage_book[arb]['reverse']['weighted_prices'][arb + 'usdt']]))
                     await ex_arb(arb.upper(), False)
                 else:
                     continue
@@ -394,8 +402,8 @@ async def populateArb():
 #                 await ex_arb(arb.upper(), False)
 
 async def ex_trade(pair, side, quantity):
-    trade_url = 'https://api.binance.com/api/v3/order'
-    api_header = {'X-MBX-APIKEY': APIKEY}
+    global trade_url
+    global api_header
     params = create_signed_params(pair, side, quantity)
     try:
         async with aiohttp.ClientSession() as session:
@@ -413,19 +421,20 @@ async def ex_arb(arb, is_regular):
     global arbitrage_book
     global btc_book
     is_trading = True
-    pairs = ['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']
+    # pairs = ['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']
     quantity_hash = [str(balance), 0, 0]
     leakage_hash = {}
 
-    for i, pair in enumerate(pairs):
+    for i, pair in enumerate(['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']):
         if i == 0:
             trade_response = await ex_trade(pair, 'BUY', quantity_hash[0])
         elif i == 1:
             trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', quantity_hash[1])
         elif i == 2:
             trade_response = await ex_trade(pair, 'SELL', quantity_hash[2])
-        log_msg = '{} params : '.format(pair) + str(trade_response['params']) + ' | trade response: ' + str(trade_response['content'])
-        logger.info(log_msg)
+        # log_msg = 'Trade params : ' + str(trade_response['params']) + ' | trade response: ' + str(trade_response['content'])
+        # logger.info(log_msg)
+        logger.info('Trade Params: {} | Trade Response: {}'.format(str(trade_response['params']), str(trade_response['content'])))
         if trade_response['status_code'] == 200:
             try:
                 if i == 0:

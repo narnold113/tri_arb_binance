@@ -18,11 +18,15 @@ def get_arbs():
     ARBS = []
     PAIRS = []
     tickers = {
-        ticker['symbol']: ticker['quoteVolume']
+        ticker['symbol']: {
+            'quoteVolume': ticker['quoteVolume'],
+            'isMarginTradingAllowed': ticker['isMarginTradingAllowed']
+        }
         for ticker in ticker_info
     }
     for item in exchange_info['symbols']:
         if item['symbol'][-3:] == 'BTC' and item['isSpotTradingAllowed'] == True and is_white_list(item['symbol']) == False:
+        # if item['symbol'][-3:] == 'BTC' and item['isMarginTradingAllowed'] == True and is_white_list(item['symbol']) == False:
             arb = item['symbol'][0 : len(item['symbol']) - 3]
             arbs.append(arb)
             if arbs.count(arb) == 2:
@@ -30,6 +34,7 @@ def get_arbs():
                 PAIRS.append(arb + 'USDT')
                 PAIRS.append(arb + 'BTC')
         elif item['symbol'][-4:] == 'USDT' and item['isSpotTradingAllowed'] == True and is_white_list(item['symbol']) == False:
+        # elif item['symbol'][-4:] == 'USDT' and item['isMarginTradingAllowed'] == True and is_white_list(item['symbol']) == False:
             arb = item['symbol'][0 : len(item['symbol']) - 4]
             arbs.append(arb)
             if arbs.count(arb) == 2:
@@ -48,9 +53,12 @@ def get_arbs():
         for arb in ARBS
     }
 
-    low_arbs = [arb for arb in ARBS if arbitrage_book[arb][arb + 'USDT'] < 1_000_000 or arbitrage_book[arb][arb + 'BTC'] < 1_000_000]
+    low_arbs = [arb for arb in ARBS if arbitrage_book[arb][arb + 'USDT'] < 500_000 or arbitrage_book[arb][arb + 'BTC'] < 500_000]
 
     for arb in low_arbs:
         arbitrage_book.pop(arb)
 
     return [arb.lower() for arb in arbitrage_book.keys()]
+
+
+print(len(get_arbs()))
