@@ -17,11 +17,15 @@ def get_arbs():
     arbs = []
     ARBS = []
     PAIRS = []
+    # tickers = {
+    #     ticker['symbol']: {
+    #         'quoteVolume': ticker['quoteVolume'],
+    #         'isMarginTradingAllowed': ticker['isMarginTradingAllowed']
+    #     }
+    #     for ticker in ticker_info
+    # }
     tickers = {
-        ticker['symbol']: {
-            'quoteVolume': ticker['quoteVolume'],
-            'isMarginTradingAllowed': ticker['isMarginTradingAllowed']
-        }
+        ticker['symbol']: ticker['quoteVolume']
         for ticker in ticker_info
     }
     for item in exchange_info['symbols']:
@@ -53,7 +57,7 @@ def get_arbs():
         for arb in ARBS
     }
 
-    low_arbs = [arb for arb in ARBS if arbitrage_book[arb][arb + 'USDT'] < 500_000 or arbitrage_book[arb][arb + 'BTC'] < 500_000]
+    low_arbs = [arb for arb in ARBS if arbitrage_book[arb][arb + 'USDT'] < 5_000_000 or arbitrage_book[arb][arb + 'BTC'] < 5_000_000]
 
     for arb in low_arbs:
         arbitrage_book.pop(arb)
@@ -61,4 +65,4 @@ def get_arbs():
     return [arb.lower() for arb in arbitrage_book.keys()]
 
 
-print(len(get_arbs()))
+# print(len(get_arbs()))

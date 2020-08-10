@@ -343,6 +343,8 @@ async def populateArb():
     global balance
     global is_trading
     while 1:
+        # print('This is the time in populateArb: {}'.format(time.time()))
+        # logger.info('This is the time in populateArb: {}'.format(time.time()))
         await asyncio.sleep(0.005)
         try:
             # btc_book['weighted_prices']['regular'] = getWeightedPrice(btc_book['orderbook']['a'], balance, reverse=False)
@@ -445,23 +447,20 @@ async def ex_arb(arb, is_regular):
                         wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'btc']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
                         quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
                         leakage_hash[arb] = float(trade_response['content']['executedQty']) * 0.999
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
-                        logger.info(log_msg)
+                        logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                 elif i == 1:
                     if is_regular:
                         wp = getWeightedPrice(arbitrage_book[arb.lower()]['orderbooks'][arb.lower() + 'usdt']['b'][:25], float(trade_response['content']['executedQty']), reverse=True)
                         quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * 0.999 * wp))
                         leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['cummulativeQuoteQty'])
                         leakage_hash[arb] = float(trade_response['content']['executedQty']) * 0.999
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
-                        logger.info(log_msg)
+                        logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                     else:
                         wp = getWeightedPrice(btc_book['orderbook']['b'], float(trade_response['content']['cummulativeQuoteQty']), reverse=True)
                         quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * 0.999 * wp))
                         leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
                         leakage_hash['btc'] = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
-                        log_msg = 'Weighted Price used for next quantity hash: {}'.format(wp)
-                        logger.info(log_msg)
+                        logger.info('Weighted Price for next quantity hash: {}'.format(wp))
                 else:
                     if is_regular:
                         leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
@@ -469,9 +468,9 @@ async def ex_arb(arb, is_regular):
                         leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['executedQty'])
 
                     balance = float(trade_response['content']['cummulativeQuoteQty']) * 0.999
-                    logger.info('Trades for {} arb were successful'.format(arb))
-                    logger.info('USDT balance before: {} and after: {}'.format(quantity_hash[0], balance))
-                    logger.info('BTC leakage: {} | {} leakage: {}'.format(leakage_hash['btc'], arb, leakage_hash[arb]))
+                    logger.info('Trades for {} arb were successful \nUSDT balance before: {} and after: {} \nBTC Leakage: {} and {} Leakage: {}'.format(arb, quantity_hash[0], balance, leakage_hash['btc'], arb, leakage_hash[arb]))
+                    # logger.info('USDT balance before: {} and after: {}'.format(quantity_hash[0], balance))
+                    # logger.info('BTC leakage: {} | {} leakage: {}'.format(leakage_hash['btc'], arb, leakage_hash[arb]))
                     is_trading = False
                     sys.exit()
             except Exception as err:

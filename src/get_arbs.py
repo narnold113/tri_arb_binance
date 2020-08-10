@@ -48,9 +48,11 @@ def get_arbs():
         for arb in ARBS
     }
 
-    low_arbs = [arb for arb in ARBS if arbitrage_book[arb][arb + 'USDT'] < 1_000_000 or arbitrage_book[arb][arb + 'BTC'] < 1_000_000]
+    low_arbs = [arb for arb in ARBS if arbitrage_book[arb][arb + 'USDT'] < 500_000 or arbitrage_book[arb][arb + 'BTC'] < 500_000]
 
     for arb in low_arbs:
         arbitrage_book.pop(arb)
 
     return [arb.lower() for arb in arbitrage_book.keys()]
+
+# print(len(get_arbs()))
