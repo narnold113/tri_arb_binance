@@ -25,10 +25,30 @@ logger.addHandler(logHandler)
 
 APIKEY = str(os.environ["BIN_API"])
 SECRETKEY = str(os.environ["BIN_SECRET"])
+trade_url = 'https://api.binance.com/api/v3/order'
+api_header = {'X-MBX-APIKEY': APIKEY}
 is_trading = False
 balance = 0
 
 ### Helper functions ###
+def create_signed_params(symbol, side, quantity):
+    timestamp = int(round(time.time() * 1000))
+    query_string = 'symbol={}&side={}&type={}&quoteOrderQty={}&recvWindow={}&timestamp={}'.format(symbol, side, 'MARKET', quantity, 10_000, timestamp)
+    signature = hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
+    return {
+        'symbol': symbol,
+        'side': side,
+        'type': 'MARKET',
+        'quoteOrderQty': quantity,
+        'recvWindow': 10_000,
+        'timestamp': timestamp,
+        'signature': signature
+    }
+
+def round_quote_precision(quantity):
+    factor = 10 ** 8
+    return math.floor(quantity * factor) / factor
+
 async def get_balances():
     global APIKEY
     global SECRETKEY
@@ -85,11 +105,34 @@ async def get_vol_dict():
 
 async def find_high_balances():
     vol_dict = await get_vol_dict()
+    high_bal_dict = {}
+    for item in vol_dict:
+        if item not in ['USDT', 'BNB'] and vol_dict[item]['volume'] > 1.1:
+            high_bal_dict[item] = vol_dict[item]['volume']
+    return high_bal_dict
+
+async def trade_high_balances():
+    high_bal_dict = await find_high_balances()
+    print(high_bal_dict)
+
+    for item in high_bal_dict:
+        try:
+            params = create_signed_params(item + 'USDT', 'BUY', round_quote_precision(high_bal_dict[item]))
+            res = requests.post(url=trade_url, headers=api_header, params=params)
+            print(res.json())
+            if res.status_code == 200:
+                print(res.json())
+        except Exception as err:
+            print(err)
 
 
 async def main():
-    vol_dict = await get_vol_dict()
-    print(vol_dict)
+    await trade_high_balances()
+    # print(await find_high_balances())
+    # vol_dict = await get_vol_dict()
+    # for item in vol_dict:
+    #     print(vol_dict[item]['volume'])
+    # print(vol_dict)
 
 if __name__ == "__main__":
     try:
