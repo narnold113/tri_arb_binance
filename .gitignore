@@ -2,3 +2,5 @@ env_binance
 tri_arb_binance.log
 src/__pycache__
 tests/__pycache__
+tests/main_tests/__pycache__
+tests/misc_tests/__pycache__
