@@ -1,6 +1,7 @@
 import asyncio
 import websockets
 import aiohttp
+import requests
 import numpy as np
 import json
 import logging
@@ -25,7 +26,6 @@ logger.addHandler(logHandler)
 
 APIKEY = str(os.environ["BIN_API"])
 SECRETKEY = str(os.environ["BIN_SECRET"])
-# ARBLIMIT = float(os.environ["ARB_LIMIT"])
 trade_url = 'https://api.binance.com/api/v3/order'
 api_header = {'X-MBX-APIKEY': APIKEY}
 ARBLIMIT = 0.015
@@ -109,31 +109,6 @@ def create_signed_params(symbol, side, quantity):
         'timestamp': timestamp,
         'signature': signature
     }
-
-async def get_balance(quote):
-    global APIKEY
-    global SECRETKEY
-    url = "https://api.binance.com/api/v3/account"
-    header = {'X-MBX-APIKEY': APIKEY}
-    timestamp = int(round(time.time() * 1000))
-    recvWindow = 10_000
-    query_string = 'recvWindow={}&timestamp={}'.format(recvWindow, timestamp)
-    signature = hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
-    params = {
-        'recvWindow': recvWindow,
-        'timestamp': timestamp,
-        'signature': signature
-    }
-    async with aiohttp.ClientSession() as session:
-        async with session.request(method="GET",
-                                   url=url,
-                                   headers=header,
-                                   params=params) as resp:
-            json_content = await resp.json()
-            if json_content is not None and resp.status == 200:
-                balances = [x for x in json_content['balances'] if float(x['free']) != 0]
-                return round_quote_precision([float(x['free']) for x in balances if x['asset'] == quote][0])
-
 
 def getWeightedPrice(orders, balance, reverse=False):
     volume = 0
@@ -419,7 +394,7 @@ async def fullBookTimer():
         try:
             check = all(item in build_list for item in PAIRS)
             if check:
-                logger.info('All orderbooks successfully filled')
+                logger.info('All orderbooks have successfully been filled')
                 await asyncio.wait([populateArb(), stillAlive()])
             else:
                 continue
@@ -429,10 +404,85 @@ async def fullBookTimer():
         else:
             continue
 
+async def get_balance(isHigh):
+    global APIKEY
+    global SECRETKEY
+    url = "https://api.binance.com/api/v3/account"
+    header = {'X-MBX-APIKEY': APIKEY}
+    timestamp = int(round(time.time() * 1000))
+    recvWindow = 10_000
+    query_string = 'recvWindow={}&timestamp={}'.format(recvWindow, timestamp)
+    signature = hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
+    params = {
+        'recvWindow': recvWindow,
+        'timestamp': timestamp,
+        'signature': signature
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.request(method="GET",
+                                   url=url,
+                                   headers=header,
+                                   params=params) as resp:
+            json_content = await resp.json()
+            if json_content is not None and resp.status == 200:
+                if isHigh:
+                    bal_dict = {
+                        item['asset']: {
+                            'quantity': float(item['free']),
+                            'volume': 0
+                        }
+                        for item in json_content['balances'] if float(item['free']) > 0
+                    }
+                    return bal_dict
+                else:
+                    balances = [x for x in json_content['balances'] if float(x['free']) != 0]
+                    return round_quote_precision([float(x['free']) for x in balances if x['asset'] == 'USDT'][0])
+
+
+async def trade_high_balances():
+    try:
+        bal_dict = await get_balance(True)
+        ticker_info = requests.get('https://api.binance.com/api/v3/ticker/24hr').json()
+        for coin in bal_dict:
+            if coin != 'USDT':
+                pair = coin.upper() + 'USDT'
+                try:
+                    price = [x['lastPrice'] for x in ticker_info if x['symbol'] == pair][0]
+                except:
+                    continue
+                bal_dict[coin]['volume'] = float(price) * bal_dict[coin]['quantity']
+            else:
+                bal_dict[coin]['volume'] = bal_dict[coin]['quantity']
+        vol_dict = dict(sorted(bal_dict.items(), key=lambda item: item[1]['volume'], reverse=True))
+
+        high_bal_dict = {}
+        for item in vol_dict:
+            if item not in ['USDT', 'BNB'] and vol_dict[item]['volume'] > 10.1:
+                high_bal_dict[item] = vol_dict[item]['volume']
+
+        if high_bal_dict:
+            for item in high_bal_dict:
+                try:
+                    params = create_signed_params(item + 'USDT', 'BUY', round_quote_precision(high_bal_dict[item]))
+                    res = requests.post(url=trade_url, headers=api_header, params=params)
+                    logger.info(res.json())
+                    if res.status_code == 200:
+                        print('{} balance converted to USDT'.format(item))
+                except Exception as err:
+                    print(err)
+            return 'At least one crypto balance was over $10'
+        else:
+            return 'No high balances'
+    except Exception as err:
+        logger.exception(err)
+        sys.exit()
 
 async def main():
     global balance
-    balance = await get_balance('USDT')
+    high_bal = await trade_high_balances()
+    logger.info(high_bal)
+    balance = await get_balance(False)
+    logger.info('USDT Balance: {}'.format(balance))
     if balance < 10:
         logger.info('USDT balance is less than $10')
         sys.exit()

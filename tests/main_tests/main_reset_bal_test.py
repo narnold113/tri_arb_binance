@@ -71,9 +71,6 @@ async def get_balances():
                                        params=params) as resp:
                 json_content = await resp.json()
                 if json_content is not None and resp.status == 200:
-                    # print(json_content)
-                    # balances = [x for x in json_content['balances'] if float(x['free']) > 0]
-                    # print(balances)
                     bal_dict = {
                         item['asset']: {
                             'quantity': float(item['free']),
@@ -82,12 +79,31 @@ async def get_balances():
                         for item in json_content['balances'] if float(item['free']) > 0
                     }
                     return bal_dict
-                    # return [float(x['free']) for x in balances if float(x['free']) > 0][0]
     except Exception as err:
         logger.exception(err)
         sys.exit()
 
-async def get_vol_dict():
+# async def find_high_balances():
+#     bal_dict = await get_balances()
+#     ticker_info = requests.get('https://api.binance.com/api/v3/ticker/24hr').json()
+#     for coin in bal_dict:
+#         if coin != 'USDT':
+#             pair = coin.upper() + 'USDT'
+#             try:
+#                 price = [x['lastPrice'] for x in ticker_info if x['symbol'] == pair][0]
+#             except:
+#                 continue
+#             bal_dict[coin]['volume'] = float(price) * bal_dict[coin]['quantity']
+#         else:
+#             bal_dict[coin]['volume'] = bal_dict[coin]['quantity']
+#     vol_dict = dict(sorted(bal_dict.items(), key=lambda item: item[1]['volume'], reverse=True))
+#     high_bal_dict = {}
+#     for item in vol_dict:
+#         if item not in ['USDT', 'BNB'] and vol_dict[item]['volume'] > 10.1:
+#             high_bal_dict[item] = vol_dict[item]['volume']
+#     return high_bal_dict
+
+async def trade_high_balances():
     bal_dict = await get_balances()
     ticker_info = requests.get('https://api.binance.com/api/v3/ticker/24hr').json()
     for coin in bal_dict:
@@ -97,42 +113,34 @@ async def get_vol_dict():
                 price = [x['lastPrice'] for x in ticker_info if x['symbol'] == pair][0]
             except:
                 continue
-            # print(price)
             bal_dict[coin]['volume'] = float(price) * bal_dict[coin]['quantity']
         else:
             bal_dict[coin]['volume'] = bal_dict[coin]['quantity']
-    return dict(sorted(bal_dict.items(), key=lambda item: item[1]['volume'], reverse=True))
+    vol_dict = dict(sorted(bal_dict.items(), key=lambda item: item[1]['volume'], reverse=True))
 
-async def find_high_balances():
-    vol_dict = await get_vol_dict()
     high_bal_dict = {}
     for item in vol_dict:
-        if item not in ['USDT', 'BNB'] and vol_dict[item]['volume'] > 1.1:
+        if item not in ['USDT', 'BNB'] and vol_dict[item]['volume'] > 10.1:
             high_bal_dict[item] = vol_dict[item]['volume']
-    return high_bal_dict
 
-async def trade_high_balances():
-    high_bal_dict = await find_high_balances()
-    print(high_bal_dict)
-
-    for item in high_bal_dict:
-        try:
-            params = create_signed_params(item + 'USDT', 'BUY', round_quote_precision(high_bal_dict[item]))
-            res = requests.post(url=trade_url, headers=api_header, params=params)
-            print(res.json())
-            if res.status_code == 200:
-                print(res.json())
-        except Exception as err:
-            print(err)
+    if high_bal_dict:
+        for item in high_bal_dict:
+            try:
+                params = create_signed_params(item + 'USDT', 'BUY', round_quote_precision(high_bal_dict[item]))
+                res = requests.post(url=trade_url, headers=api_header, params=params)
+                logger.info(res.json())
+                if res.status_code == 200:
+                    print('{} balance converted to USDT'.format(item))
+            except Exception as err:
+                print(err)
+        return 'At least one crypto balance was over $10'
+    else:
+        return 'No high balances'
 
 
 async def main():
-    await trade_high_balances()
-    # print(await find_high_balances())
-    # vol_dict = await get_vol_dict()
-    # for item in vol_dict:
-    #     print(vol_dict[item]['volume'])
-    # print(vol_dict)
+    print(await trade_high_balances())
+    # return await trade_high_balances()
 
 if __name__ == "__main__":
     try:
