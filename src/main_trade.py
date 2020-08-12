@@ -34,6 +34,7 @@ balance = 0
 build_list = []
 
 ARBS = get_arbs.get_arbs()
+ARBS.remove('dai')
 logger.info('Number of ARBS: {}'.format(len(ARBS)))
 SIDES = [
     'a',
@@ -260,10 +261,10 @@ async def populateArb():
     while 1:
         await asyncio.sleep(0.003)
         try:
+            btc_book['weighted_prices']['regular'] = getWeightedPrice(btc_book['orderbook']['a'], balance, reverse=False)
+            btc_book['weighted_prices']['reverse'] = getWeightedPrice(btc_book['orderbook']['b'], balance, reverse=False)
+            btc_book['amount_if_bought'] = np.divide(balance, btc_book['weighted_prices']['regular'])
             for arb in ARBS:
-                btc_book['weighted_prices']['regular'] = getWeightedPrice(btc_book['orderbook']['a'], balance, reverse=False)
-                btc_book['weighted_prices']['reverse'] = getWeightedPrice(btc_book['orderbook']['b'], balance, reverse=False)
-                btc_book['amount_if_bought'] = np.divide(balance, btc_book['weighted_prices']['regular'])
                 pair_iterator = [pair for pair in PAIRS if pair[0:len(arb)] == arb]
                 for pair in sorted(pair_iterator, reverse=True):
                     arb_ob = arbitrage_book[arb]['orderbooks'][pair]
