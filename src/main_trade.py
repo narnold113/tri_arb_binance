@@ -464,7 +464,7 @@ async def trade_high_balances():
         if high_bal_dict:
             for item in high_bal_dict:
                 try:
-                    params = create_signed_params(item + 'USDT', 'BUY', round_quote_precision(high_bal_dict[item]))
+                    params = create_signed_params(item + 'USDT', 'SELL', round_quote_precision(high_bal_dict[item]))
                     res = requests.post(url=trade_url, headers=api_header, params=params)
                     logger.info(res.json())
                     if res.status_code == 200:
