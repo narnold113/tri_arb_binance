@@ -97,14 +97,14 @@ async def ex_limitorder(symbol, side, quantity, price):
 async def tests():
     order_latency = []
     delete_latency = []
-    for i in range(1, 11):
-        await asyncio.sleep(2)
+    for i in range(1, 61):
+        await asyncio.sleep(5)
 
         now = time.time()
         print(await ex_limitorder('XRPUSDT', 'BUY', '100', '0.199'))
         order_latency.append(time.time() - now)
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(.2)
 
         now = time.time()
         print(await cancel_orders('XRPUSDT'))
