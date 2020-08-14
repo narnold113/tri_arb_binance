@@ -349,21 +349,93 @@
 #
 #
 
-import logging
-from statistics import mean
+# import logging
+# from statistics import mean
+#
+# logger = logging.getLogger('tri_arb_binance')
+# logger.setLevel(logging.INFO)
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# # logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
+# logHandler = logging.StreamHandler()
+# logHandler.setLevel(logging.INFO)
+# logHandler.setFormatter(formatter)
+# logger.addHandler(logHandler)
+#
+# logger.info('This is a string: {} And this is another string: {}'.format(str('123'), str('456')))
+#
+# print(mean([1,2,3,4,5]))
 
-logger = logging.getLogger('tri_arb_binance')
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-# logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
-logHandler = logging.StreamHandler()
-logHandler.setLevel(logging.INFO)
-logHandler.setFormatter(formatter)
-logger.addHandler(logHandler)
 
-logger.info('This is a string: {} And this is another string: {}'.format(str('123'), str('456')))
+# def getWeightedPrice(orders, balance, reverse=False):
+#     volume = 0
+#     price = 0
+#     wp = 0
+#     if reverse:
+#         for order in orders:
+#             volume += order[1]
+#             wp += order[0] * (order[1] / balance)
+#             if volume >= balance:
+#                 remainder = volume - balance
+#                 wp -= order[0] * (remainder / balance)
+#                 return wp
+#     else:
+#         for order in orders:
+#             volume += order[0] * order[1]
+#             wp += order[0] * ((order[0] * order[1]) / balance)
+#             if volume >= balance:
+#                 remainder = volume - balance
+#                 wp -= order[0] * (remainder / balance)
+#                 return wp
+#
+# fills = [
+#     {'price': '11688.51000000', 'qty': '0.00241500', 'commission': '0.00098952', 'commissionAsset': 'BNB', 'tradeId': 383819543}
+#     # {'price': '11689.51000000', 'qty': '0.00141500', 'commission': '0.00058952', 'commissionAsset': 'BNB', 'tradeId': 383819543},
+#     # {'price': '11690.51000000', 'qty': '0.00441500', 'commission': '0.00188952', 'commissionAsset': 'BNB', 'tradeId': 383819543},
+#     ]
+#
+# # for x in fills:
+# #     print(x['price'])
+#
+# # print([[float(x['price']), float(x['qty'])] for x in fills])
+#
+#
+#
+# print(getWeightedPrice([[float(x['price']), float(x['qty'])] for x in fills], 28.22775165, False))
+#
+#
 
-print(mean([1,2,3,4,5]))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+s = str(
+    'I am a loser {}\n'
+    'I am still a loser just on a different line {}'
+).format(5,5)
+
+print(s)
+
+
+
+
+
+
+
+
+
+
+
 
 
 
