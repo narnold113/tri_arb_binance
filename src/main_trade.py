@@ -97,9 +97,9 @@ def round_quote_precision(quantity):
     factor = 10 ** 8
     return math.floor(quantity * factor) / factor
 
-def create_signed_params(symbol, side, quantity):
+def create_signed_params(symbol, side, quantity, recvWindow):
     timestamp = int(round(time.time() * 1000))
-    query_string = 'symbol={}&side={}&type={}&quoteOrderQty={}&recvWindow={}&timestamp={}'.format(symbol, side, 'MARKET', quantity, 10_000, timestamp)
+    query_string = 'symbol={}&side={}&type={}&quoteOrderQty={}&recvWindow={}&timestamp={}'.format(symbol, side, 'MARKET', quantity, recvWindowv, timestamp)
     signature = hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
     return {
         'symbol': symbol,
@@ -294,21 +294,24 @@ async def populateArb():
             logger.exception(err)
             sys.exit()
 
-async def ex_trade(pair, side, quantity):
+async def ex_trade(pair, side, quantity, recvWindow):
     global trade_url
     global api_header
-    params = create_signed_params(pair, side, quantity)
+    params = create_signed_params(pair, side, quantity, recvWindow)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url=trade_url, headers=api_header, params=params) as resp:
                 json_res = await resp.json()
                 if json_res is not None:
-                    if 'status' not in json_res.keys():
-                        if json_res['code'] == -2010:
-                            logger.info('Trade failed. Insufficient Funds. Recursion yay')
-                            await ex_trade(pair, side, quantity * 0.999)
-                    else:
-                        return {'content': json_res, 'status_code': resp.status, 'params': params}
+                    if json_res is not None:
+                        if resp.status != 200:
+                            if json_res['code'] == -2010:
+                                logger.info('Trade failed. Insufficient Funds. Recursion yay')
+                                await ex_trade(pair, side, str(float(quantity) * 0.999))
+                            else:
+                                logger.info('Some other type of error occurred. {}'.format(json_res['code']))
+                        else:
+                            return {'content': json_res, 'status_code': resp.status, 'params': params}
     except Exception as err:
         logger.exception(err)
         sys.exit()
@@ -326,11 +329,11 @@ async def ex_arb(arb, is_regular, weighted_prices):
     for i, pair in enumerate(['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']):
         start_time = time.time()
         if i == 0:
-            trade_response = await ex_trade(pair, 'BUY', quantity_hash[i])
+            trade_response = await ex_trade(pair, 'BUY', quantity_hash[i], 125)
         elif i == 1:
-            trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', quantity_hash[i])
+            trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', quantity_hash[i], 10_000)
         elif i == 2:
-            trade_response = await ex_trade(pair, 'SELL', quantity_hash[i])
+            trade_response = await ex_trade(pair, 'SELL', quantity_hash[i], 10_000)
         logger.info('Trade Params: {} | Trade Response: {} | Trade Latency: {}'.format(str(trade_response['params']), str(trade_response['content']), time.time() - start_time))
         if trade_response['status_code'] == 200:
             try:

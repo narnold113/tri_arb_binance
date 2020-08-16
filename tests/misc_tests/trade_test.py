@@ -124,9 +124,23 @@ async def ex_trade(pair, side, quantity):
             async with session.post(url=trade_url, headers=api_header, params=params) as resp:
                 json_res = await resp.json()
                 if json_res is not None:
-                    # return {'content': json_res, 'status_code': resp.status, 'params': params}
-                    log_msg = '{} params : '.format(pair) + str(params) + ' | trade response: ' + str(json_res)
-                    logger.info(log_msg)
+                    if resp.status != 200:
+                        if json_res['code'] == -2010:
+                            print("This is where recursion should happen")
+                        else:
+                            print('This is some other type of error code')
+                    else:
+                        print("The trade was successful. No recursion")
+                # print(resp)
+                # print(resp.status)
+                # print(json_res)
+                # if json_res is not None:
+                #     if 'status' not in json_res.keys():
+                #         if json_res['code'] == -2010:
+                #             logger.info('Trade failed. Insufficient Funds. Recursion yay')
+                #             await ex_trade(pair, side, quantity * 0.999)
+                #     else:
+                #         return {'content': json_res, 'status_code': resp.status, 'params': params}
     except Exception as err:
         logger.exception(err)
         sys.exit()
@@ -169,16 +183,15 @@ async def ex_arb(arb, is_regular):
 
 async def main():
     global balance
-    global stepSizes
     balance = await get_balance('USDT')
-    # stepSizes = await get_stepsizes()
-    # print(stepSizes)
     print(balance)
 
-    pair = input('Pair: ').upper()
-    side = input('Side: ').upper()
-    quantity = str(round_quote_precision(float(input('Quantity: '))))
-    await ex_trade(pair, side, quantity)
+    # pair = input('Pair: ').upper()
+    # side = input('Side: ').upper()
+    # quantity = str(round_quote_precision(float(input('Quantity: '))))
+    # await ex_trade(pair, side, quantity)
+
+    await ex_trade('BTCUSDT', 'BUY', 100)
 
     # arb = input('Arb: ').upper()
     # is_regular = input('is_regular: ')
