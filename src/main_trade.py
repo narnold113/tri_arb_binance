@@ -99,7 +99,7 @@ def round_quote_precision(quantity):
 
 def create_signed_params(symbol, side, quantity, recvWindow):
     timestamp = int(round(time.time() * 1000))
-    query_string = 'symbol={}&side={}&type={}&quoteOrderQty={}&recvWindow={}&timestamp={}'.format(symbol, side, 'MARKET', quantity, recvWindowv, timestamp)
+    query_string = 'symbol={}&side={}&type={}&quoteOrderQty={}&recvWindow={}&timestamp={}'.format(symbol, side, 'MARKET', quantity, recvWindow, timestamp)
     signature = hmac.new(bytes(SECRETKEY, 'utf-8'), bytes(query_string, 'utf-8'), hashlib.sha256).hexdigest()
     return {
         'symbol': symbol,
@@ -307,7 +307,7 @@ async def ex_trade(pair, side, quantity, recvWindow):
                         if resp.status != 200:
                             if json_res['code'] == -2010:
                                 logger.info('Trade failed. Insufficient Funds. Recursion yay')
-                                await ex_trade(pair, side, str(float(quantity) * 0.999))
+                                await ex_trade(pair, side, str(float(quantity) * 0.999), recvWindow)
                             else:
                                 logger.info('Some other type of error occurred. {}'.format(json_res['code']))
                         else:
