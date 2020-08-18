@@ -419,6 +419,17 @@ async def stillAlive():
         else:
             continue
 
+async def restart(isRecursion):
+    global is_trading
+    if not isRecursion:
+        await asyncio.sleep(10_800) # 3 hrs
+        if not is_trading:
+            sys.exit()
+        else:
+            logger.info('Tried to exit but is_trading == True')
+            await asyncio.sleep(1)
+            await restart(True)
+
 async def fullBookTimer():
     global build_list
     global balance
@@ -428,7 +439,7 @@ async def fullBookTimer():
             check = all(item in build_list for item in PAIRS)
             if check:
                 logger.info('All orderbooks have successfully been filled')
-                await asyncio.wait([populateArb(), stillAlive()])
+                await asyncio.wait([populateArb(), stillAlive(), restart(False)])
             else:
                 continue
         except Exception as err:
