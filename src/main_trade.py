@@ -34,6 +34,7 @@ balance = 0
 build_list = []
 
 ARBS = get_arbs.get_arbs()
+# ARBS = ['eth']
 ARBS.remove('dai')
 logger.info('Number of ARBS: {}'.format(len(ARBS)))
 SIDES = [
@@ -106,7 +107,7 @@ def create_signed_params(symbol, side, quantity, recvWindow):
         'side': side,
         'type': 'MARKET',
         'quoteOrderQty': quantity,
-        'recvWindow': 10_000,
+        'recvWindow': recvWindow,
         'timestamp': timestamp,
         'signature': signature
     }

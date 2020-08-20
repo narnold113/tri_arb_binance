@@ -191,7 +191,7 @@ async def main():
     # quantity = str(round_quote_precision(float(input('Quantity: '))))
     # await ex_trade(pair, side, quantity)
 
-    await ex_trade('BTCUSDT', 'BUY', 100)
+    await ex_trade('BTCUSDT', 'BUY', 20)
 
     # arb = input('Arb: ').upper()
     # is_regular = input('is_regular: ')
