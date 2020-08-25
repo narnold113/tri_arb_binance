@@ -266,7 +266,7 @@ async def ex_arb(arb, bal, is_regular, weighted_prices):
                     )
                 )
                 is_trading = False
-                sys.exit()
+                # sys.exit()
         except Exception as err:
             logger.exception(err)
             sys.exit()
