@@ -49,7 +49,7 @@ PAIRS.insert(0, 'btcusdt')
 
 STREAMS = []
 for pair in PAIRS:
-    STREAMS.append(pair + '@depth@100ms')
+    STREAMS.append(pair + '@depth20@100ms')
 
 btc_book = {
     'orderbook': {
@@ -112,7 +112,7 @@ def create_signed_params(symbol, side, quantity, recvWindow):
         'signature': signature
     }
 
-def getWeightedPrice(orders, balance, reverse=False):
+def getWeightedPrice(orders, balance, reverse=False, isRecursion=False):
     volume = 0
     price = 0
     wp = 0
@@ -123,7 +123,11 @@ def getWeightedPrice(orders, balance, reverse=False):
             if volume >= balance:
                 remainder = volume - balance
                 wp -= order[0] * (remainder / balance)
-                return wp
+                if isRecursion:
+                    return wp
+                else:
+                    return [wp, volume / balance]
+        return [getWeightedPrice(orders, volume, True, True), volume / balance]
     else:
         for order in orders:
             volume += order[0] * order[1]
@@ -131,7 +135,11 @@ def getWeightedPrice(orders, balance, reverse=False):
             if volume >= balance:
                 remainder = volume - balance
                 wp -= order[0] * (remainder / balance)
-                return wp
+                if isRecursion:
+                    return wp
+                else:
+                    return [wp, volume / balance]
+        return [getWeightedPrice(orders, volume, False, True), volume / balance]
 
 
 
@@ -151,15 +159,15 @@ async def subscribe() -> None:
             except Exception as err:
                 logger.exception(err)
                 sys.exit()
-            try:
-                sub_coros = [
-                    buildBook(pair)
-                    for pair in PAIRS
-                ]
-                await asyncio.wait(sub_coros)
-            except Exception:
-                logger.exception(err)
-                sys.exit()
+            # try:
+            #     sub_coros = [
+            #         buildBook(pair)
+            #         for pair in PAIRS
+            #     ]
+            #     await asyncio.wait(sub_coros)
+            # except Exception:
+            #     logger.exception(err)
+            #     sys.exit()
             while 1:
                 try:
                     res = await ws.recv()
@@ -171,88 +179,89 @@ async def subscribe() -> None:
         logger.exception(err)
         sys.exit()
 
-async def buildBook(pair):
-    if pair[-3:] == 'btc':
-        arb = pair[0:len(pair) - 3]
-    elif pair[-4:] == 'usdt':
-        arb = pair[0:len(pair) - 4]
-    async with aiohttp.ClientSession() as session:
-        async with session.get('https://www.binance.com/api/v3/depth?symbol={}&limit=500'.format(pair.upper())) as response:
-            if response.status == 200:
-                json_snapshot = await response.json()
-                if pair == 'btcusdt':
-                    btc_book['orderbook']['lastUpdateId'] = json_snapshot['lastUpdateId']
-                    btc_book['orderbook']['a'] = np.array(json_snapshot['asks'], np.float64)
-                    btc_book['orderbook']['b'] = np.array(json_snapshot['bids'], np.float64)
-                    build_list.append(pair)
-                else:
-                    arbitrage_book[arb]['orderbooks'][pair]['lastUpdateId'] = json_snapshot['lastUpdateId']
-                    arbitrage_book[arb]['orderbooks'][pair]['a'] = np.array(json_snapshot['asks'], np.float64)
-                    arbitrage_book[arb]['orderbooks'][pair]['b'] = np.array(json_snapshot['bids'], np.float64)
-                    build_list.append(pair)
-            else:
-                logger.info('Failed to get snapshot response. Here is the http-response status code: {}'.format(response.status))
-                sys.exit()
+# async def buildBook(pair):
+#     if pair[-3:] == 'btc':
+#         arb = pair[0:len(pair) - 3]
+#     elif pair[-4:] == 'usdt':
+#         arb = pair[0:len(pair) - 4]
+#     async with aiohttp.ClientSession() as session:
+#         async with session.get('https://www.binance.com/api/v3/depth?symbol={}&limit=500'.format(pair.upper())) as response:
+#             if response.status == 200:
+#                 json_snapshot = await response.json()
+#                 if pair == 'btcusdt':
+#                     btc_book['orderbook']['lastUpdateId'] = json_snapshot['lastUpdateId']
+#                     btc_book['orderbook']['a'] = np.array(json_snapshot['asks'], np.float64)
+#                     btc_book['orderbook']['b'] = np.array(json_snapshot['bids'], np.float64)
+#                     build_list.append(pair)
+#                 else:
+#                     arbitrage_book[arb]['orderbooks'][pair]['lastUpdateId'] = json_snapshot['lastUpdateId']
+#                     arbitrage_book[arb]['orderbooks'][pair]['a'] = np.array(json_snapshot['asks'], np.float64)
+#                     arbitrage_book[arb]['orderbooks'][pair]['b'] = np.array(json_snapshot['bids'], np.float64)
+#                     build_list.append(pair)
+#             else:
+#                 logger.info('Failed to get snapshot response. Here is the http-response status code: {}'.format(response.status))
+#                 sys.exit()
 
 async def updateBook(res):
     global arbitrage_book
     global btc_book
-    try:
-        json_res = json.loads(res)
-        if 'stream' in json_res.keys():
-            pair = json_res['data']['s'].lower()
-            if pair[-3:] == 'btc':
-                arb = pair[0:len(pair) - 3]
-            elif pair[-4:] == 'usdt':
-                arb = pair[0:len(pair) - 4]
-            firstUpdateId = json_res["data"]["U"]
-            finalUpdateId = json_res["data"]["u"]
-
-            if pair == 'btcusdt':
-                if finalUpdateId > btc_book['orderbook']['lastUpdateId']: ### See Binance API documentation for details on this condition ###
-                    for side in SIDES:
-                        uos = np.array(json_res["data"][side], np.float64)
-                        btc_ob = btc_book['orderbook'][side]
-                        if uos.size == 0:
-                            continue
-                        else:
-                            not_in_index = np.in1d(uos[:,0], btc_ob[:,0], invert=True)
-                            ss_index = np.searchsorted(btc_ob[:,0], uos[not_in_index,0]) if side == 'a' else np.searchsorted(-btc_ob[:,0], -uos[not_in_index,0])
-                            btc_ob = np.insert(btc_ob, ss_index, uos[not_in_index], axis=0)
-
-                            inter, orders_ind, updateorders_ind = np.intersect1d(btc_ob[:,0], uos[:,0], return_indices=True)
-                            btc_ob[orders_ind] = uos[updateorders_ind]
-
-                            delete_ind = np.where(btc_ob == 0)[0]
-                            btc_ob = np.delete(btc_ob, delete_ind, axis=0)
-                            btc_book['orderbook'][side] = btc_ob
-                else:
-                    pass
-            else:
-                if finalUpdateId > arbitrage_book[arb]['orderbooks'][pair]['lastUpdateId']:
-                    for side in SIDES:
-                        uos = np.array(json_res["data"][side], np.float64)
-                        arb_ob = arbitrage_book[arb]['orderbooks'][pair][side]
-                        if uos.size == 0:
-                            continue
-                        else:
-                            not_in_index = np.in1d(uos[:,0], arb_ob[:,0], invert=True)
-                            ss_index = np.searchsorted(arb_ob[:,0], uos[not_in_index,0]) if side == 'a' else np.searchsorted(-arb_ob[:,0], -uos[not_in_index,0])
-                            arb_ob = np.insert(arb_ob, ss_index, uos[not_in_index], axis=0)
-
-                            inter, orders_ind, updateorders_ind = np.intersect1d(arb_ob[:,0], uos[:,0], return_indices=True)
-                            arb_ob[orders_ind] = uos[updateorders_ind]
-
-                            delete_ind = np.where(arb_ob == 0)[0]
-                            arb_ob = np.delete(arb_ob, delete_ind, axis=0)
-                            arbitrage_book[arb]['orderbooks'][pair][side] = arb_ob
-                else:
-                    pass
-        else:
-            pass
-    except Exception as err:
-        logger.exception(err)
-        sys.exit()
+    print(res)
+    # try:
+    #     json_res = json.loads(res)
+    #     if 'stream' in json_res.keys():
+    #         pair = json_res['data']['s'].lower()
+    #         if pair[-3:] == 'btc':
+    #             arb = pair[0:len(pair) - 3]
+    #         elif pair[-4:] == 'usdt':
+    #             arb = pair[0:len(pair) - 4]
+    #         firstUpdateId = json_res["data"]["U"]
+    #         finalUpdateId = json_res["data"]["u"]
+    #
+    #         if pair == 'btcusdt':
+    #             if finalUpdateId > btc_book['orderbook']['lastUpdateId']: ### See Binance API documentation for details on this condition ###
+    #                 for side in SIDES:
+    #                     uos = np.array(json_res["data"][side], np.float64)
+    #                     btc_ob = btc_book['orderbook'][side]
+    #                     if uos.size == 0:
+    #                         continue
+    #                     else:
+    #                         not_in_index = np.in1d(uos[:,0], btc_ob[:,0], invert=True)
+    #                         ss_index = np.searchsorted(btc_ob[:,0], uos[not_in_index,0]) if side == 'a' else np.searchsorted(-btc_ob[:,0], -uos[not_in_index,0])
+    #                         btc_ob = np.insert(btc_ob, ss_index, uos[not_in_index], axis=0)
+    #
+    #                         inter, orders_ind, updateorders_ind = np.intersect1d(btc_ob[:,0], uos[:,0], return_indices=True)
+    #                         btc_ob[orders_ind] = uos[updateorders_ind]
+    #
+    #                         delete_ind = np.where(btc_ob == 0)[0]
+    #                         btc_ob = np.delete(btc_ob, delete_ind, axis=0)
+    #                         btc_book['orderbook'][side] = btc_ob
+    #             else:
+    #                 pass
+    #         else:
+    #             if finalUpdateId > arbitrage_book[arb]['orderbooks'][pair]['lastUpdateId']:
+    #                 for side in SIDES:
+    #                     uos = np.array(json_res["data"][side], np.float64)
+    #                     arb_ob = arbitrage_book[arb]['orderbooks'][pair][side]
+    #                     if uos.size == 0:
+    #                         continue
+    #                     else:
+    #                         not_in_index = np.in1d(uos[:,0], arb_ob[:,0], invert=True)
+    #                         ss_index = np.searchsorted(arb_ob[:,0], uos[not_in_index,0]) if side == 'a' else np.searchsorted(-arb_ob[:,0], -uos[not_in_index,0])
+    #                         arb_ob = np.insert(arb_ob, ss_index, uos[not_in_index], axis=0)
+    #
+    #                         inter, orders_ind, updateorders_ind = np.intersect1d(arb_ob[:,0], uos[:,0], return_indices=True)
+    #                         arb_ob[orders_ind] = uos[updateorders_ind]
+    #
+    #                         delete_ind = np.where(arb_ob == 0)[0]
+    #                         arb_ob = np.delete(arb_ob, delete_ind, axis=0)
+    #                         arbitrage_book[arb]['orderbooks'][pair][side] = arb_ob
+    #             else:
+    #                 pass
+    #     else:
+    #         pass
+    # except Exception as err:
+    #     logger.exception(err)
+    #     sys.exit()
 
 async def populateArb():
     global arbitrage_book
@@ -533,7 +542,7 @@ async def main():
         sys.exit()
     coroutines = []
     coroutines.append(subscribe())
-    coroutines.append(fullBookTimer())
+    # coroutines.append(fullBookTimer())
     await asyncio.wait(coroutines)
 
 
