@@ -398,7 +398,7 @@ async def main():
         sys.exit()
     coroutines = []
     coroutines.append(subscribe())
-    coroutines.append(populateArb())
+    coroutines.append(fullBookTimer())
     await asyncio.wait(coroutines)
 
 if __name__ == "__main__":
