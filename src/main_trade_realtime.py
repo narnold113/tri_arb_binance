@@ -29,10 +29,13 @@ SECRETKEY = str(os.environ["BIN_SECRET"])
 trade_url = 'https://api.binance.com/api/v3/order'
 api_header = {'X-MBX-APIKEY': APIKEY}
 is_trading = False
+isBookFull = False
+build_set = set()
 balance = 0
 
 # ARBS = ['eth']
 ARBS = get_arbs.get_arbs()
+logger.info('Number of ARBS: {}'.format(len(ARBS)))
 PAIRS = []
 for arb in ARBS:
     PAIRS.append(arb + 'usdt')
@@ -83,10 +86,14 @@ def create_signed_params(symbol, side, quantity, recvWindow):
 async def updateBook(payload):
     global arbitrage_book
     global btc_book
+    global build_set
+    global isBookFull
     try:
         json_payload = json.loads(payload)
         if 'stream' in json_payload.keys():
             pair = json_payload['data']['s'].lower()
+            if not isBookFull:
+                build_set.add(pair)
             if pair[-3:] == 'btc':
                 arb = pair[0:len(pair) - 3]
             elif pair[-4:] == 'usdt':
@@ -117,7 +124,6 @@ async def populateArb():
     global btc_book
     global is_trading
     global balance
-    await asyncio.sleep(10)
     while 1:
         try:
             await asyncio.sleep(0.001)
@@ -365,6 +371,21 @@ async def trade_high_balances():
     except Exception as err:
         logger.exception(err)
         sys.exit()
+
+async def fullBookTimer():
+    global build_set
+    global isBookFull
+    while 1:
+        await asyncio.sleep(0.5)
+        try:
+            check = all(item in build_set for item in PAIRS)
+            if check:
+                logger.info('All orderbooks have successfully been filled')
+                isBookFull = True
+                await asyncio.wait([populateArb()])
+        except Exception as err:
+            logger.exception(err)
+            sys.exit()
 
 async def main():
     global balance

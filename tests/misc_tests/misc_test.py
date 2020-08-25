@@ -415,18 +415,12 @@
 
 
 
+pairs = ['ethusdt', 'ltcusdt']
 
-
-
-
-s = str(
-    'I am a loser {}\n'
-    'I am still a loser just on a different line {}'
-).format(5,5)
-
-print(s)
-
-
+x = set()
+x.add('ethusdt')
+x.add('ltcusdt')
+print(all(item in x for item in pairs))
 
 
 

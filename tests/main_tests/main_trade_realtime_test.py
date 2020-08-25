@@ -28,12 +28,14 @@ APIKEY = str(os.environ["BIN_API"])
 SECRETKEY = str(os.environ["BIN_SECRET"])
 trade_url = 'https://api.binance.com/api/v3/order'
 api_header = {'X-MBX-APIKEY': APIKEY}
-ARBLIMIT = 0.015
 is_trading = False
+isBookFull = False
 balance = 30
-build_list = []
+build_set = set()
 
-ARBS = ['eth']
+# ARBS = ['eth', 'xrp', 'ltc', 'dash']
+ARBS = get_arbs.get_arbs()
+logger.info('Number of ARBS: {}'.format(len(ARBS)))
 PAIRS = []
 for arb in ARBS:
     PAIRS.append(arb + 'usdt')
@@ -87,10 +89,14 @@ def create_signed_params(symbol, side, quantity, recvWindow):
 async def updateBook(payload):
     global arbitrage_book
     global btc_book
+    global build_set
+    global isBookFull
     try:
         json_payload = json.loads(payload)
         if 'stream' in json_payload.keys():
             pair = json_payload['data']['s'].lower()
+            if not isBookFull:
+                build_set.add(pair)
             if pair[-3:] == 'btc':
                 arb = pair[0:len(pair) - 3]
             elif pair[-4:] == 'usdt':
@@ -131,7 +137,6 @@ async def populateArb():
     global btc_book
     global is_trading
     global balance
-    await asyncio.sleep(5)
     while 1:
         try:
             await asyncio.sleep(0.5)
@@ -155,33 +160,33 @@ async def populateArb():
                 rev_volume_hash.append(arbitrage_book[arb][arb + 'usdt'][1][2])
                 arbitrage_book[arb]['triangles'][1][1] = min(rev_volume_hash)
 
-                # print(arbitrage_book['eth']['triangles'])
-                if arbitrage_book[arb]['triangles'][0][0] > 0 and is_trading == False: # Regular
-                    if arbitrage_book[arb]['triangles'][0][1] >= 11:
-                        logger.info('Executing regular {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][0][0], [btc_book[1][0], arbitrage_book[arb][arb + 'btc'][1][0], arbitrage_book[arb][arb + 'usdt'][0][0]]))
-                        await ex_arb(
-                            arb.upper(),
-                            arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance,
-                            False,
-                            [
-                                btc_book[1][0],
-                                arbitrage_book[arb][arb + 'btc'][1][0],
-                                arbitrage_book[arb][arb + 'usdt'][0][0]
-                            ]
-                        )
-                elif arbitrage_book[arb]['triangles'][1][0] > 0 and is_trading == False: # Reverse
-                    if arbitrage_book[arb]['triangles'][1][1] >= 11:
-                        logger.info('Executing reverse {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][1][0], [btc_book[0][0], arbitrage_book[arb][arb + 'btc'][0][0], arbitrage_book[arb][arb + 'usdt'][1][0]]))
-                        await ex_arb(
-                            arb.upper(),
-                            arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance,
-                            True,
-                            [
-                                btc_book[0][0],
-                                arbitrage_book[arb][arb + 'btc'][0][0],
-                                arbitrage_book[arb][arb + 'usdt'][1][0]
-                            ]
-                        )
+                print(arbitrage_book[arb]['triangles'])
+                # if arbitrage_book[arb]['triangles'][0][0] > 0 and is_trading == False: # Regular
+                #     if arbitrage_book[arb]['triangles'][0][1] >= 11:
+                #         logger.info('Executing regular {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][0][0], [btc_book[1][0], arbitrage_book[arb][arb + 'btc'][1][0], arbitrage_book[arb][arb + 'usdt'][0][0]]))
+                #         await ex_arb(
+                #             arb.upper(),
+                #             arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance,
+                #             False,
+                #             [
+                #                 btc_book[1][0],
+                #                 arbitrage_book[arb][arb + 'btc'][1][0],
+                #                 arbitrage_book[arb][arb + 'usdt'][0][0]
+                #             ]
+                #         )
+                # elif arbitrage_book[arb]['triangles'][1][0] > 0 and is_trading == False: # Reverse
+                #     if arbitrage_book[arb]['triangles'][1][1] >= 11:
+                #         logger.info('Executing reverse {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][1][0], [btc_book[0][0], arbitrage_book[arb][arb + 'btc'][0][0], arbitrage_book[arb][arb + 'usdt'][1][0]]))
+                #         await ex_arb(
+                #             arb.upper(),
+                #             arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance,
+                #             True,
+                #             [
+                #                 btc_book[0][0],
+                #                 arbitrage_book[arb][arb + 'btc'][0][0],
+                #                 arbitrage_book[arb][arb + 'usdt'][1][0]
+                #             ]
+                #         )
         except Exception as err:
             logger.exception(err)
             sys.exit()
@@ -394,6 +399,21 @@ async def trade_high_balances():
         logger.exception(err)
         sys.exit()
 
+async def fullBookTimer():
+    global build_set
+    global isBookFull
+    while 1:
+        await asyncio.sleep(0.5)
+        try:
+            check = all(item in build_set for item in PAIRS)
+            if check:
+                logger.info('All orderbooks have successfully been filled')
+                isBookFull = True
+                await asyncio.wait([populateArb()])
+        except Exception as err:
+            logger.exception(err)
+            sys.exit()
+
 async def main():
     global balance
     high_bal = await trade_high_balances()
@@ -405,7 +425,7 @@ async def main():
         sys.exit()
     coroutines = []
     coroutines.append(subscribe())
-    coroutines.append(populateArb())
+    coroutines.append(fullBookTimer())
     await asyncio.wait(coroutines)
 
 if __name__ == "__main__":
