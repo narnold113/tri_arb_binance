@@ -117,10 +117,10 @@ async def populateArb():
     global btc_book
     global is_trading
     global balance
-    await asyncio.sleep(5)
+    await asyncio.sleep(10)
     while 1:
         try:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.001)
             reg_volume_hash = []
             rev_volume_hash = []
             for arb in ARBS:
