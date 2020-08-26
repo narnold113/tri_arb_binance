@@ -153,7 +153,7 @@ async def populateArb():
                         await ex_arb(
                             arb.upper(),
                             arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance,
-                            False,
+                            True,
                             [
                                 btc_book[1][0],
                                 arbitrage_book[arb][arb + 'btc'][1][0],
@@ -166,7 +166,7 @@ async def populateArb():
                         await ex_arb(
                             arb.upper(),
                             arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance,
-                            True,
+                            False,
                             [
                                 btc_book[0][0],
                                 arbitrage_book[arb][arb + 'btc'][0][0],
