@@ -205,7 +205,7 @@ async def ex_arb(arb, bal, is_regular, weighted_prices):
     global arbitrage_book
     global btc_book
     is_trading = True
-    quantity_hash = [str(bal), 0, 0]
+    quantity_hash = [str(round_quote_precision(bal)), 0, 0]
     leakage_hash = {}
     slippage_hash = {}
 
