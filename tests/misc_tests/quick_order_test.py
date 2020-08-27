@@ -49,7 +49,7 @@ async def ex_trade(pair, side, quantity, recvWindow, leg, wait_time):
                     else:
                         if json_res['code'] == -2010:
                             print('Trade failed. Insufficient Funds. Recursion yay')
-                            return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), recvWindow, 1)
+                            return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), recvWindow, 1, 0)
                         else:
                             print('Some other type of error occurred: {}'.format(json_res))
     except Exception as err:
