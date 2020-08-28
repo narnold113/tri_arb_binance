@@ -225,7 +225,7 @@ async def ex_trade(pair, side, quantity, leg):
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Insufficient Funds. Recursioning...'.format(leg))
-                            return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), 4)
+                            return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.9999)), 4)
                         else:
                             logger.info('Some other type of error occurred: {}'.format(json_res))
                             sys.exit()
