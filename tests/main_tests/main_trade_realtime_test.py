@@ -161,40 +161,44 @@ async def populateArb():
                 # print(arbitrage_book[arb]['triangles'])
                 if arbitrage_book[arb]['triangles'][0][0] > 0.0001 and is_trading == False: # Regular
                     if arbitrage_book[arb]['triangles'][0][1] >= 11:
-                        logger.info('Executing regular {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][0][0], [btc_book[1][0], arbitrage_book[arb][arb + 'btc'][1][0], arbitrage_book[arb][arb + 'usdt'][0][0]]))
+                        weighted_prices = [
+                            btc_book[1][0],
+                            arbitrage_book[arb][arb + 'btc'][1][0],
+                            arbitrage_book[arb][arb + 'usdt'][0][0]
+                        ]
+                        balances = [
+                            str(round_quote_precision(arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance)),
+                            str(round_quote_precision(arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance / weighted_prices[0])),
+                            str(round_quote_precision(((arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance / weighted_prices[0]) / weighted_prices[1]) * weighted_prices[2]))
+                        ]
+                        logger.info('Executing regular {}. Arb value is {} | Weighted Prices: {} | Balances for quote quantity: {}'.format(arb, arbitrage_book[arb]['triangles'][0][0], weighted_prices, balances))
                         await ex_arb(
                             arb.upper(),
-                            [
-                                str(round_quote_precision(arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance)),
-                                str(round_quote_precision(arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance / btc_book[1][0])),
-                                str(round_quote_precision(((arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance / btc_book[1][0]) / arbitrage_book[arb][arb + 'btc'][1][0]) * arbitrage_book[arb][arb + 'usdt'][0][0]))
-                            ],
-                            True
-                            ,[
-                                btc_book[1][0],
-                                arbitrage_book[arb][arb + 'btc'][1][0],
-                                arbitrage_book[arb][arb + 'usdt'][0][0]
-                            ]
+                            True,
+                            balances,
+                            weighted_prices
                         )
-                        break # breaking the for loop because the orderbooks used are now 30 ms old
+                        break # breaking the for loop because the orderbooks used are now 30ish ms old
                 elif arbitrage_book[arb]['triangles'][1][0] > 0.0001 and is_trading == False: # Reverse
                     if arbitrage_book[arb]['triangles'][1][1] >= 11:
-                        logger.info('Executing reverse {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][1][0], [btc_book[0][0], arbitrage_book[arb][arb + 'btc'][0][0], arbitrage_book[arb][arb + 'usdt'][1][0]]))
+                        weighted_prices = [
+                            arbitrage_book[arb][arb + 'usdt'][1][0],
+                            arbitrage_book[arb][arb + 'btc'][0][0],
+                            btc_book[0][0]
+                        ]
+                        balances = [
+                            str(round_quote_precision(arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance)),
+                            str(round_quote_precision((arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance / weighted_prices[0]) * weighted_prices[1])),
+                            str(round_quote_precision(((arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance / weighted_prices[0]) * weighted_prices[1]) * weighted_prices[2]))
+                        ]
+                        logger.info('Executing reverse {}. Arb value is {} | Weighted Prices: {} | Balances for quote quantity: {}'.format(arb, arbitrage_book[arb]['triangles'][1][0], weighted_prices, balances))
                         await ex_arb(
                             arb.upper(),
-                            [
-                                str(round_quote_precision(arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance)),
-                                str(round_quote_precision((arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance / arbitrage_book[arb][arb + 'usdt'][1][0]) * arbitrage_book[arb][arb + 'btc'][0][0])),
-                                str(round_quote_precision(((arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance / arbitrage_book[arb][arb + 'usdt'][1][0]) * arbitrage_book[arb][arb + 'btc'][0][0]) * btc_book[0][0]))
-                            ],
-                            False
-                            ,[
-                                arbitrage_book[arb][arb + 'usdt'][1][0],
-                                arbitrage_book[arb][arb + 'btc'][0][0],
-                                btc_book[0][0]
-                            ]
+                            False,
+                            balances,
+                            weighted_prices
                         )
-                        break # breaking the for loop because the orderbooks used are now 30 ms old
+                        break # breaking the for loop because the orderbooks used are now 30ish ms old
         except Exception as err:
             logger.exception(err)
             sys.exit()
@@ -230,7 +234,7 @@ async def ex_trade(pair, side, quantity, leg):
         sys.exit()
 
 # async def ex_arb(arb, balances, is_regular, weighted_prices):
-async def ex_arb(arb, balances, is_regular, weighted_prices):
+async def ex_arb(arb, is_regular, balances, weighted_prices):
     global is_trading
     global trade_responses
     is_trading = True
