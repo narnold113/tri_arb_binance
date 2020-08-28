@@ -412,22 +412,34 @@
 
 
 
+import asyncio
+import websockets
+import aiohttp
+import requests
+import numpy as np
+import json
+import logging
+import traceback as tb
+import time
+import sys
+import os
+import hmac
+import hashlib
+import math
+from datetime import datetime
+
+logger = logging.getLogger('tri_arb_binance')
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
+logHandler = logging.StreamHandler()
+logHandler.setLevel(logging.INFO)
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
 
 
 
-pairs = ['ethusdt', 'ltcusdt']
-
-x = set()
-x.add('ethusdt')
-x.add('ltcusdt')
-print(all(item in x for item in pairs))
-
-
-
-
-
-
-
+logger.info({'content': 1234})
 
 
 

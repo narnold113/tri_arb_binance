@@ -33,8 +33,8 @@ isBookFull = False
 balance = 30
 build_set = set()
 
-# ARBS = ['eth', 'xrp', 'ltc', 'dash']
-ARBS = get_arbs.get_arbs()
+ARBS = ['eth', 'xrp', 'ltc', 'dash']
+# ARBS = get_arbs.get_arbs()
 logger.info('Number of ARBS: {}'.format(len(ARBS)))
 PAIRS = []
 for arb in ARBS:
@@ -143,9 +143,6 @@ async def populateArb():
             reg_volume_hash = []
             rev_volume_hash = []
             for arb in ARBS:
-                pair_iterator = [pair for pair in PAIRS if pair[:len(arb)] == arb]
-                for pair in sorted(pair_iterator, reverse=True):
-                    pass
                 reg_synth_price = np.multiply(btc_book[1][0], arbitrage_book[arb][arb + 'btc'][1][0])
                 arbitrage_book[arb]['triangles'][0][0] = np.divide(np.subtract(arbitrage_book[arb][arb + 'usdt'][0][0], reg_synth_price), reg_synth_price)
                 reg_volume_hash.append(btc_book[1][2])
@@ -160,52 +157,67 @@ async def populateArb():
                 rev_volume_hash.append(arbitrage_book[arb][arb + 'usdt'][1][2])
                 arbitrage_book[arb]['triangles'][1][1] = min(rev_volume_hash)
 
-                print(arbitrage_book[arb]['triangles'])
-                # if arbitrage_book[arb]['triangles'][0][0] > 0 and is_trading == False: # Regular
-                #     if arbitrage_book[arb]['triangles'][0][1] >= 11:
-                #         logger.info('Executing regular {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][0][0], [btc_book[1][0], arbitrage_book[arb][arb + 'btc'][1][0], arbitrage_book[arb][arb + 'usdt'][0][0]]))
-                #         await ex_arb(
-                #             arb.upper(),
-                #             arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance,
-                #             False,
-                #             [
-                #                 btc_book[1][0],
-                #                 arbitrage_book[arb][arb + 'btc'][1][0],
-                #                 arbitrage_book[arb][arb + 'usdt'][0][0]
-                #             ]
-                #         )
-                # elif arbitrage_book[arb]['triangles'][1][0] > 0 and is_trading == False: # Reverse
-                #     if arbitrage_book[arb]['triangles'][1][1] >= 11:
-                #         logger.info('Executing reverse {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][1][0], [btc_book[0][0], arbitrage_book[arb][arb + 'btc'][0][0], arbitrage_book[arb][arb + 'usdt'][1][0]]))
-                #         await ex_arb(
-                #             arb.upper(),
-                #             arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance,
-                #             True,
-                #             [
-                #                 btc_book[0][0],
-                #                 arbitrage_book[arb][arb + 'btc'][0][0],
-                #                 arbitrage_book[arb][arb + 'usdt'][1][0]
-                #             ]
-                #         )
+                # print(arbitrage_book[arb]['triangles'])
+                if arbitrage_book[arb]['triangles'][0][0] > 0 and is_trading == False: # Regular
+                    if arbitrage_book[arb]['triangles'][0][1] >= 11:
+                        logger.info('Executing regular {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][0][0], [btc_book[1][0], arbitrage_book[arb][arb + 'btc'][1][0], arbitrage_book[arb][arb + 'usdt'][0][0]]))
+                        await ex_arb(
+                            arb.upper(),
+                            [
+                                str(round_quote_precision(arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance)),
+                                str(round_quote_precision(arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance / btc_book[1][0])),
+                                str(round_quote_precision(((arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance / btc_book[1][0]) / arbitrage_book[arb][arb + 'btc'][1][0]) * arbitrage_book[arb][arb + 'usdt'][0][0]))
+                            ],
+                            True
+                            # ,[
+                            #     btc_book[1][0],
+                            #     arbitrage_book[arb][arb + 'btc'][1][0],
+                            #     arbitrage_book[arb][arb + 'usdt'][0][0]
+                            # ]
+                        )
+                        break # breaking the for loop because the orderbooks used are now 30 ms old
+                elif arbitrage_book[arb]['triangles'][1][0] > 0 and is_trading == False: # Reverse
+                    if arbitrage_book[arb]['triangles'][1][1] >= 11:
+                        logger.info('Executing reverse {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][1][0], [btc_book[0][0], arbitrage_book[arb][arb + 'btc'][0][0], arbitrage_book[arb][arb + 'usdt'][1][0]]))
+                        await ex_arb(
+                            arb.upper(),
+                            [
+                                str(round_quote_precision(arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance)),
+                                str(round_quote_precision((arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance / arbitrage_book[arb][arb + 'usdt'][1][0]) * arbitrage_book[arb][arb + 'btc'][0][0])),
+                                str(round_quote_precision(((arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance / arbitrage_book[arb][arb + 'usdt'][1][0]) * arbitrage_book[arb][arb + 'btc'][0][0]) * btc_book[0][0]))
+                            ],
+                            False
+                            # ,[
+                            #     btc_book[0][0],
+                            #     arbitrage_book[arb][arb + 'btc'][0][0],
+                            #     arbitrage_book[arb][arb + 'usdt'][1][0]
+                            # ]
+                        )
+                        break # breaking the for loop because the orderbooks used are now 30 ms old
         except Exception as err:
             logger.exception(err)
             sys.exit()
 
-async def ex_trade(pair, side, quantity, recvWindow):
+async def ex_trade(pair, side, quantity, leg):
     global trade_url
     global api_header
-    params = create_signed_params(pair, side, quantity, recvWindow)
+    if leg == 2:
+        await asyncio.sleep(0.25)
+    elif leg == 3:
+        await asyncio.sleep(0.5)
+    params = create_signed_params(pair, side, quantity, 1_000)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url=trade_url, headers=api_header, params=params) as resp:
                 json_res = await resp.json()
                 if json_res is not None:
                     if resp.status == 200:
-                        return {'content': json_res, 'params': params}
+                        # return {'content': json_res, 'params': params}
+                        logger.info({'content': json_res, 'params': params})
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Trade failed. Insufficient Funds. Recursion yay')
-                            return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), recvWindow)
+                            return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), 1)
                         else:
                             logger.info('Some other type of error occurred: {}'.format(json_res))
                             sys.exit()
@@ -213,84 +225,104 @@ async def ex_trade(pair, side, quantity, recvWindow):
         logger.exception(err)
         sys.exit()
 
-async def ex_arb(arb, bal, is_regular, weighted_prices):
+# async def ex_arb(arb, balances, is_regular, weighted_prices):
+async def ex_arb(arb, balances, is_regular):
     global is_trading
-    global balance
-    global arbitrage_book
-    global btc_book
     is_trading = True
-    quantity_hash = [str(bal), 0, 0]
-    leakage_hash = {}
-    slippage_hash = {}
+    if is_regular:
+        trade_coroutines = [
+            ex_trade('BTCUSDT', 'BUY', balances[0], 1),
+            ex_trade(arb + 'BTC', 'BUY', balances[1], 2),
+            ex_trade(arb + 'USDT', 'SELL', balances[2], 3)
+        ]
+        await asyncio.wait(trade_coroutines)
+    else:
+        trade_coroutines = [
+            ex_trade(arb + 'USDT', 'BUY', balances[0], 1),
+            ex_trade(arb + 'BTC', 'SELL', balances[1], 2),
+            ex_trade('BTCUSDT', 'SELL', balances[2], 3)
+        ]
+        await asyncio.wait(trade_coroutines)
 
-    for i, pair in enumerate(['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']):
-        start_time = time.time()
-        if i == 0:
-            trade_response = await ex_trade(pair, 'BUY', quantity_hash[i], 1_000)
-        elif i == 1:
-            trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', quantity_hash[i], 10_000)
-        elif i == 2:
-            trade_response = await ex_trade(pair, 'SELL', quantity_hash[i], 10_000)
-        logger.info('Trade Params: {} | Trade Response: {} | Trade Latency: {}'.format(str(trade_response['params']), str(trade_response['content']), time.time() - start_time))
-        try:
-            if i == 0:
-                if is_regular:
-                    quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty'])))
-                    leakage_hash['btc'] = float(trade_response['content']['executedQty'])
-                    slippage_hash['BTCUSDT'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[0]) / weighted_prices[0]) * 100, 3)
-                else:
-                    wp = arbitrage_book[arb.lower()][arb.lower() + 'btc'][0][0]
-                    quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * wp))
-                    leakage_hash[arb] = float(trade_response['content']['executedQty'])
-                    slippage_hash[arb + 'USDT'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[2]) / weighted_prices[2]) * 100, 3)
-                    logger.info('Weighted Price for next quantity hash: {}'.format(wp))
-            elif i == 1:
-                if is_regular:
-                    wp = arbitrage_book[arb.lower()][arb.lower() + 'usdt'][0][0]
-                    quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * wp))
-                    leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['cummulativeQuoteQty'])
-                    leakage_hash[arb] = float(trade_response['content']['executedQty'])
-                    slippage_hash[arb + 'BTC'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[1]) / weighted_prices[1]) * 100, 3)
-                    logger.info('Weighted Price for next quantity hash: {}'.format(wp))
-                else:
-                    wp = btc_book[0][0]
-                    quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * wp))
-                    leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
-                    leakage_hash['btc'] = float(trade_response['content']['cummulativeQuoteQty'])
-                    slippage_hash[arb + 'BTC'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[1]) / weighted_prices[1]) * -100, 3)
-                    logger.info('Weighted Price for next quantity hash: {}'.format(wp))
-            else:
-                if is_regular:
-                    leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
-                    slippage_hash[arb + 'USDT'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[2]) / weighted_prices[2]) * -100, 3)
-                else:
-                    leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['executedQty'])
-                    slippage_hash['BTCUSDT'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[0]) / weighted_prices[0]) * -100, 3)
+    is_trading = False
+    sys.exit()
 
-                balance = round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']))
-                logger.info(
-                    str(
-                        'Trades for {} arb were successful\n'
-                        'USDT balance before: {} and after: {}\n'
-                        'BTC Leakage: {} ({} USDT) and {} Leakage: {} ({} USDT)\n'
-                        'Slippage Percentages: {}\n'
-                    ).format(
-                        arb,
-                        quantity_hash[0],
-                        balance,
-                        leakage_hash['btc'],
-                        leakage_hash['btc'] * weighted_prices[0],
-                        arb, leakage_hash[arb],
-                        leakage_hash[arb] * weighted_prices[2],
-                        slippage_hash
-                    )
-                )
-                is_trading = False
-                sys.exit()
-        except Exception as err:
-            logger.exception(err)
-            sys.exit()
 
+    # global is_trading
+    # global arbitrage_book
+    # global btc_book
+    # is_trading = True
+    # quantity_hash = [str(bal), 0, 0]
+    # leakage_hash = {}
+    # slippage_hash = {}
+
+    # for i, pair in enumerate(['BTCUSDT', arb + 'BTC', arb + 'USDT'] if is_regular else [arb + 'USDT', arb + 'BTC', 'BTCUSDT']):
+    #     start_time = time.time()
+    #     if i == 0:
+    #         trade_response = await ex_trade(pair, 'BUY', quantity_hash[i], 1_000)
+    #     elif i == 1:
+    #         trade_response = await ex_trade(pair, 'BUY' if is_regular else 'SELL', quantity_hash[i], 10_000)
+    #     elif i == 2:
+    #         trade_response = await ex_trade(pair, 'SELL', quantity_hash[i], 10_000)
+    #     logger.info('Trade Params: {} | Trade Response: {} | Trade Latency: {}'.format(str(trade_response['params']), str(trade_response['content']), time.time() - start_time))
+    #     try:
+    #         if i == 0:
+    #             if is_regular:
+    #                 quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty'])))
+    #                 leakage_hash['btc'] = float(trade_response['content']['executedQty'])
+    #                 slippage_hash['BTCUSDT'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[0]) / weighted_prices[0]) * 100, 3)
+    #             else:
+    #                 wp = arbitrage_book[arb.lower()][arb.lower() + 'btc'][0][0]
+    #                 quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * wp))
+    #                 leakage_hash[arb] = float(trade_response['content']['executedQty'])
+    #                 slippage_hash[arb + 'USDT'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[2]) / weighted_prices[2]) * 100, 3)
+    #                 logger.info('Weighted Price for next quantity hash: {}'.format(wp))
+    #         elif i == 1:
+    #             if is_regular:
+    #                 wp = arbitrage_book[arb.lower()][arb.lower() + 'usdt'][0][0]
+    #                 quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['executedQty']) * wp))
+    #                 leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['cummulativeQuoteQty'])
+    #                 leakage_hash[arb] = float(trade_response['content']['executedQty'])
+    #                 slippage_hash[arb + 'BTC'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[1]) / weighted_prices[1]) * 100, 3)
+    #                 logger.info('Weighted Price for next quantity hash: {}'.format(wp))
+    #             else:
+    #                 wp = btc_book[0][0]
+    #                 quantity_hash[i + 1] = str(round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']) * wp))
+    #                 leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
+    #                 leakage_hash['btc'] = float(trade_response['content']['cummulativeQuoteQty'])
+    #                 slippage_hash[arb + 'BTC'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[1]) / weighted_prices[1]) * -100, 3)
+    #                 logger.info('Weighted Price for next quantity hash: {}'.format(wp))
+    #         else:
+    #             if is_regular:
+    #                 leakage_hash[arb] = leakage_hash[arb] - float(trade_response['content']['executedQty'])
+    #                 slippage_hash[arb + 'USDT'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[2]) / weighted_prices[2]) * -100, 3)
+    #             else:
+    #                 leakage_hash['btc'] = leakage_hash['btc'] - float(trade_response['content']['executedQty'])
+    #                 slippage_hash['BTCUSDT'] = round(((float(trade_response['content']['fills'][0]['price']) - weighted_prices[0]) / weighted_prices[0]) * -100, 3)
+    #
+    #             balance = round_quote_precision(float(trade_response['content']['cummulativeQuoteQty']))
+    #             logger.info(
+    #                 str(
+    #                     'Trades for {} arb were successful\n'
+    #                     'USDT balance before: {} and after: {}\n'
+    #                     'BTC Leakage: {} ({} USDT) and {} Leakage: {} ({} USDT)\n'
+    #                     'Slippage Percentages: {}\n'
+    #                 ).format(
+    #                     arb,
+    #                     quantity_hash[0],
+    #                     balance,
+    #                     leakage_hash['btc'],
+    #                     leakage_hash['btc'] * weighted_prices[0],
+    #                     arb, leakage_hash[arb],
+    #                     leakage_hash[arb] * weighted_prices[2],
+    #                     slippage_hash
+    #                 )
+    #             )
+    #             is_trading = False
+    #             sys.exit()
+    #     except Exception as err:
+    #         logger.exception(err)
+    #         sys.exit()
 
 async def subscribe() -> None:
     url = 'wss://stream.binance.com:9443/stream'
