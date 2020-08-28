@@ -204,11 +204,11 @@ async def ex_trade(pair, side, quantity, leg):
     global api_header
     global trade_responses
     if leg == 2:
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.0025)
     elif leg == 3:
-        await asyncio.sleep(0.01)
-    elif leg == 4: #recursion
         await asyncio.sleep(0.005)
+    elif leg == 4: #recursion
+        await asyncio.sleep(0.0025)
     params = create_signed_params(pair, side, quantity, 1_000)
     try:
         async with aiohttp.ClientSession() as session:
