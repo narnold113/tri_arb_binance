@@ -159,7 +159,7 @@ async def populateArb():
                 arbitrage_book[arb]['triangles'][1][1] = min(rev_volume_hash)
 
                 # print(arbitrage_book[arb]['triangles'])
-                if arbitrage_book[arb]['triangles'][0][0] > 0.001 and is_trading == False: # Regular
+                if arbitrage_book[arb]['triangles'][0][0] > 0.0001 and is_trading == False: # Regular
                     if arbitrage_book[arb]['triangles'][0][1] >= 11:
                         logger.info('Executing regular {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][0][0], [btc_book[1][0], arbitrage_book[arb][arb + 'btc'][1][0], arbitrage_book[arb][arb + 'usdt'][0][0]]))
                         await ex_arb(
@@ -177,7 +177,7 @@ async def populateArb():
                             # ]
                         )
                         break # breaking the for loop because the orderbooks used are now 30 ms old
-                elif arbitrage_book[arb]['triangles'][1][0] > 0.001 and is_trading == False: # Reverse
+                elif arbitrage_book[arb]['triangles'][1][0] > 0.0001 and is_trading == False: # Reverse
                     if arbitrage_book[arb]['triangles'][1][1] >= 11:
                         logger.info('Executing reverse {}. Arb value is {} | Weighted Prices: {}'.format(arb, arbitrage_book[arb]['triangles'][1][0], [btc_book[0][0], arbitrage_book[arb][arb + 'btc'][0][0], arbitrage_book[arb][arb + 'usdt'][1][0]]))
                         await ex_arb(
