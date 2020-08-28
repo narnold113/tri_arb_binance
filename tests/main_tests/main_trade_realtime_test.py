@@ -250,7 +250,9 @@ async def ex_arb(arb, balances, is_regular):
         await asyncio.wait(trade_coroutines)
 
     is_trading = False
-    logger.info(trade_responses[-3:])
+    for tr in trade_responses[-3:]:
+        logger.info(tr)
+    # logger.info(trade_responses[-3:])
     sys.exit()
 
 
