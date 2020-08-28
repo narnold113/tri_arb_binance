@@ -285,8 +285,8 @@ async def ex_arb(arb, balances, is_regular, weighted_prices):
             'Slippage Percentages: {}\n'
         ).format(
             arb,
-            leakage_hash['btc'],
-            leakage_hash['btc'] * weighted_prices[0],
+            leakage_hash['BTC'],
+            leakage_hash['BTC'] * weighted_prices[0],
             arb,
             leakage_hash[arb],
             leakage_hash[arb] * weighted_prices[0],
