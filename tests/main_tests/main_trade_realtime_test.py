@@ -32,6 +32,7 @@ is_trading = False
 isBookFull = False
 balance = 30
 build_set = set()
+trade_responses = []
 
 ARBS = ['eth', 'xrp', 'ltc', 'dash']
 # ARBS = get_arbs.get_arbs()
@@ -201,6 +202,7 @@ async def populateArb():
 async def ex_trade(pair, side, quantity, leg):
     global trade_url
     global api_header
+    global trade_responses
     if leg == 2:
         await asyncio.sleep(0.005)
     elif leg == 3:
@@ -214,7 +216,8 @@ async def ex_trade(pair, side, quantity, leg):
                 json_res = await resp.json()
                 if json_res is not None:
                     if resp.status == 200:
-                        logger.info({'content': json_res, 'params': params})
+                        # logger.info({'content': json_res, 'params': params})
+                        trade_responses.append({'params': params, 'response': json_res, 'leg': leg})
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Insufficient Funds. Recursioning...'.format(leg))
@@ -229,6 +232,7 @@ async def ex_trade(pair, side, quantity, leg):
 # async def ex_arb(arb, balances, is_regular, weighted_prices):
 async def ex_arb(arb, balances, is_regular):
     global is_trading
+    global trade_responses
     is_trading = True
     if is_regular:
         trade_coroutines = [
@@ -246,6 +250,7 @@ async def ex_arb(arb, balances, is_regular):
         await asyncio.wait(trade_coroutines)
 
     is_trading = False
+    logger.info(trade_responses[-3:])
     sys.exit()
 
 
