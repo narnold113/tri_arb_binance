@@ -292,6 +292,7 @@ async def ex_arb(arb, balances, is_regular, weighted_prices):
             leakage_hash[arb] * weighted_prices[0],
             slippage_hash
         )
+    )
 
     sys.exit()
 
