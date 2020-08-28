@@ -170,11 +170,11 @@ async def populateArb():
                                 str(round_quote_precision(((arbitrage_book[arb]['triangles'][0][1] if arbitrage_book[arb]['triangles'][0][1] <= balance else balance / btc_book[1][0]) / arbitrage_book[arb][arb + 'btc'][1][0]) * arbitrage_book[arb][arb + 'usdt'][0][0]))
                             ],
                             True
-                            # ,[
-                            #     btc_book[1][0],
-                            #     arbitrage_book[arb][arb + 'btc'][1][0],
-                            #     arbitrage_book[arb][arb + 'usdt'][0][0]
-                            # ]
+                            ,[
+                                btc_book[1][0],
+                                arbitrage_book[arb][arb + 'btc'][1][0],
+                                arbitrage_book[arb][arb + 'usdt'][0][0]
+                            ]
                         )
                         break # breaking the for loop because the orderbooks used are now 30 ms old
                 elif arbitrage_book[arb]['triangles'][1][0] > 0.0001 and is_trading == False: # Reverse
@@ -188,11 +188,11 @@ async def populateArb():
                                 str(round_quote_precision(((arbitrage_book[arb]['triangles'][1][1] if arbitrage_book[arb]['triangles'][1][1] <= balance else balance / arbitrage_book[arb][arb + 'usdt'][1][0]) * arbitrage_book[arb][arb + 'btc'][0][0]) * btc_book[0][0]))
                             ],
                             False
-                            # ,[
-                            #     btc_book[0][0],
-                            #     arbitrage_book[arb][arb + 'btc'][0][0],
-                            #     arbitrage_book[arb][arb + 'usdt'][1][0]
-                            # ]
+                            ,[
+                                arbitrage_book[arb][arb + 'usdt'][1][0],
+                                arbitrage_book[arb][arb + 'btc'][0][0],
+                                btc_book[0][0]
+                            ]
                         )
                         break # breaking the for loop because the orderbooks used are now 30 ms old
         except Exception as err:
@@ -230,7 +230,7 @@ async def ex_trade(pair, side, quantity, leg):
         sys.exit()
 
 # async def ex_arb(arb, balances, is_regular, weighted_prices):
-async def ex_arb(arb, balances, is_regular):
+async def ex_arb(arb, balances, is_regular, weighted_prices):
     global is_trading
     global trade_responses
     is_trading = True
@@ -250,9 +250,49 @@ async def ex_arb(arb, balances, is_regular):
         await asyncio.wait(trade_coroutines)
 
     is_trading = False
-    for tr in trade_responses[-3:]:
+    leakage_hash = {}
+    slippage_hash = {}
+    for i, tr in enumerate(trade_responses[-3:]):
+        if i == 0:
+            if is_regular:
+                leakage_hash['BTC'] = float(tr['response']['executedQty'])
+                slippage_hash['BTCUSDT'] = round(((float(tr['response']['fills'][0]['price']) - weighted_prices[0]) / weighted_prices[0]) * 100, 3)
+            else:
+                leakage_hash[arb] = float(tr['response']['executedQty'])
+                slippage_hash[arb + 'USDT'] = round(((float(tr['response']['fills'][0]['price']) - weighted_prices[0]) / weighted_prices[0]) * 100, 3)
+        elif i == 1:
+            if is_regular:
+                leakage_hash['BTC'] = leakage_hash['BTC'] - float(tr['response']['cummulativeQuoteQty'])
+                leakage_hash[arb] = float(tr['response']['executedQty'])
+                slippage_hash[arb + 'BTC'] = round(((float(tr['response']['fills'][0]['price']) - weighted_prices[1]) / weighted_prices[1]) * 100, 3)
+            else:
+                leakage_hash[arb] = leakage_hash[arb] - float(tr['response']['executedQty'])
+                leakage_hash['BTC'] = float(tr['response']['cummulativeQuoteQty'])
+                slippage_hash[arb + 'BTC'] = round(((float(tr['response']['fills'][0]['price']) - weighted_prices[1]) / weighted_prices[1]) * -100, 3)
+        else:
+            if is_regular:
+                leakage_hash[arb] = leakage_hash[arb] - float(tr['response']['executedQty'])
+                slippage_hash[arb + 'USDT'] = round(((float(tr['response']['fills'][0]['price']) - weighted_prices[2]) / weighted_prices[2]) * -100, 3)
+            else:
+                leakage_hash['BTC'] = leakage_hash['BTC'] - float(tr['response']['executedQty'])
+                slippage_hash['BTCUSDT'] = round(((float(tr['response']['fills'][0]['price']) - weighted_prices[2]) / weighted_prices[2]) * -100, 3)
         logger.info(tr)
-    # logger.info(trade_responses[-3:])
+
+    logger.info(
+        str(
+            'Trades for {} arb were successful\n'
+            'BTC Leakage: {} ({} USDT) and {} Leakage: {} ({} USDT)\n'
+            'Slippage Percentages: {}\n'
+        ).format(
+            arb,
+            leakage_hash['btc'],
+            leakage_hash['btc'] * weighted_prices[0],
+            arb,
+            leakage_hash[arb],
+            leakage_hash[arb] * weighted_prices[0],
+            slippage_hash
+        )
+
     sys.exit()
 
 
