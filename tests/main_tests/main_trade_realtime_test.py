@@ -209,7 +209,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time):
     global trade_responses
 
     if leg == 2 or leg == 3:
-        await asyncio.sleep(wait_time)
+        await asyncio.sleep(wait_time / 1000)
 
     # if leg == 2:
     #     await asyncio.sleep(0.0025)
