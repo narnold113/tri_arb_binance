@@ -203,16 +203,20 @@ async def populateArb():
             logger.exception(err)
             sys.exit()
 
-async def ex_trade(pair, side, quantity, leg):
+async def ex_trade(pair, side, quantity, leg, wait_time):
     global trade_url
     global api_header
     global trade_responses
-    if leg == 2:
-        await asyncio.sleep(0.0025)
-    elif leg == 3:
-        await asyncio.sleep(0.005)
-    elif leg == 4: #recursion
-        await asyncio.sleep(0.0025)
+
+    if leg == 2 or leg == 3:
+        await asyncio.sleep(wait_time)
+
+    # if leg == 2:
+    #     await asyncio.sleep(0.0025)
+    # elif leg == 3:
+    #     await asyncio.sleep(0.005)
+    # elif leg == 4: #recursion
+    #     await asyncio.sleep(0.0025)
     params = create_signed_params(pair, side, quantity, 1_000)
     try:
         async with aiohttp.ClientSession() as session:
@@ -225,7 +229,7 @@ async def ex_trade(pair, side, quantity, leg):
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Insufficient Funds. Recursioning...'.format(leg))
-                            return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.9999)), 4)
+                            # return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.9999)), 4)
                         else:
                             logger.info('Some other type of error occurred: {}'.format(json_res))
                             sys.exit()
@@ -238,19 +242,28 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
     global is_trading
     global trade_responses
     is_trading = True
+    trade_coroutines = []
     if is_regular:
-        trade_coroutines = [
-            ex_trade('BTCUSDT', 'BUY', balances[0], 1),
-            ex_trade(arb + 'BTC', 'BUY', balances[1], 2),
-            ex_trade(arb + 'USDT', 'SELL', balances[2], 3)
-        ]
+        for i in range(0,6):
+            trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i))
+            trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i + 1))
+        trade_coroutines.insert(0, ex_trade('BTCUSDT', 'BUY', balances[0], 1, 0))
         await asyncio.wait(trade_coroutines)
+        # trade_coroutines = [
+        #     ex_trade('BTCUSDT', 'BUY', balances[0], 1),
+        #     ex_trade(arb + 'BTC', 'BUY', balances[1], 2),
+        #     ex_trade(arb + 'USDT', 'SELL', balances[2], 3)
+        # ]
     else:
-        trade_coroutines = [
-            ex_trade(arb + 'USDT', 'BUY', balances[0], 1),
-            ex_trade(arb + 'BTC', 'SELL', balances[1], 2),
-            ex_trade('BTCUSDT', 'SELL', balances[2], 3)
-        ]
+        # trade_coroutines = [
+        #     ex_trade(arb + 'USDT', 'BUY', balances[0], 1),
+        #     ex_trade(arb + 'BTC', 'SELL', balances[1], 2),
+        #     ex_trade('BTCUSDT', 'SELL', balances[2], 3)
+        # ]
+        for i in range(0,6):
+            trade_coroutines.append(ex_trade(arb + 'BTC', 'SELL', balances[1], 2, i))
+            trade_coroutines.append(ex_trade('BTCUSDT', 'SELL', balances[2], 3, i + 1))
+        trade_coroutines.insert(0, ex_trade(arb + 'USDT', 'BUY', balances[0], 1, 0))
         await asyncio.wait(trade_coroutines)
 
     is_trading = False

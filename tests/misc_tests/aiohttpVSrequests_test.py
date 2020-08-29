@@ -182,8 +182,8 @@ async def aiohttp_main():
 
 
 if __name__ == '__main__':
-    type = input("Requests or Aiohttp? ")
-    if type.lower() == 'requests':
+    type = input("Requests or Aiohttp (r or a)? ")
+    if type.lower() == 'r':
         print("performing tests with requests lib")
         requests_main()
     else:
