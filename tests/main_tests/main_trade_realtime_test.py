@@ -208,6 +208,8 @@ async def ex_trade(pair, side, quantity, leg, wait_time):
     global api_header
     global trade_responses
 
+    logger.info('{} {} {} {} '.format(pair, side, leg, wait_time))
+
     if leg == 2 or leg == 3:
         await asyncio.sleep(wait_time / 1000)
 
@@ -217,6 +219,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time):
     #     await asyncio.sleep(0.005)
     # elif leg == 4: #recursion
     #     await asyncio.sleep(0.0025)
+
     params = create_signed_params(pair, side, quantity, 1_000)
     try:
         async with aiohttp.ClientSession() as session:
@@ -228,7 +231,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time):
                         trade_responses.append({'params': params, 'response': json_res, 'leg': leg, 'wait_time': wait_time})
                     else:
                         if json_res['code'] == -2010:
-                            logger.info('Leg {} failed. Insufficient Funds. Recursioning...'.format(leg))
+                            logger.info('Leg {} failed. Wait_time: {}'.format(leg, wait_time))
                             # return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.9999)), 4)
                         else:
                             logger.info('Some other type of error occurred: {}'.format(json_res))
