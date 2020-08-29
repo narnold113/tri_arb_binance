@@ -248,8 +248,8 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
     trade_coroutines = []
     if is_regular:
         for i in range(0,3):
-            trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i))
-            trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i + 1))
+            trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i + 1))
+            trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i + 2))
         trade_coroutines.insert(0, ex_trade('BTCUSDT', 'BUY', balances[0], 1, 0))
         await asyncio.wait(trade_coroutines)
         # trade_coroutines = [
@@ -264,8 +264,8 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
         #     ex_trade('BTCUSDT', 'SELL', balances[2], 3)
         # ]
         for i in range(0,3):
-            trade_coroutines.append(ex_trade(arb + 'BTC', 'SELL', balances[1], 2, i))
-            trade_coroutines.append(ex_trade('BTCUSDT', 'SELL', balances[2], 3, i + 1))
+            trade_coroutines.append(ex_trade(arb + 'BTC', 'SELL', balances[1], 2, i + 1))
+            trade_coroutines.append(ex_trade('BTCUSDT', 'SELL', balances[2], 3, i + 2))
         trade_coroutines.insert(0, ex_trade(arb + 'USDT', 'BUY', balances[0], 1, 0))
         await asyncio.wait(trade_coroutines)
 
