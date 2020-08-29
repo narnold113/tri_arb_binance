@@ -225,7 +225,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time):
                 if json_res is not None:
                     if resp.status == 200:
                         # logger.info({'content': json_res, 'params': params})
-                        trade_responses.append({'params': params, 'response': json_res, 'leg': leg})
+                        trade_responses.append({'params': params, 'response': json_res, 'leg': leg, 'wait_time': wait_time})
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Insufficient Funds. Recursioning...'.format(leg))
