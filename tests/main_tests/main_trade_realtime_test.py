@@ -208,7 +208,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time):
     global api_header
     global trade_responses
 
-    logger.info('{} {} {} {} '.format(pair, side, leg, wait_time))
+    logger.info('{} | {} {} {} {} '.format(int(round(time.time() * 1000)), pair, side, leg, wait_time))
 
     if leg == 2 or leg == 3:
         await asyncio.sleep(wait_time / 1000)
@@ -247,7 +247,7 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
     is_trading = True
     trade_coroutines = []
     if is_regular:
-        for i in range(0,11):
+        for i in range(0,3):
             trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i))
             trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i + 1))
         trade_coroutines.insert(0, ex_trade('BTCUSDT', 'BUY', balances[0], 1, 0))
@@ -263,7 +263,7 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
         #     ex_trade(arb + 'BTC', 'SELL', balances[1], 2),
         #     ex_trade('BTCUSDT', 'SELL', balances[2], 3)
         # ]
-        for i in range(0,11):
+        for i in range(0,3):
             trade_coroutines.append(ex_trade(arb + 'BTC', 'SELL', balances[1], 2, i))
             trade_coroutines.append(ex_trade('BTCUSDT', 'SELL', balances[2], 3, i + 1))
         trade_coroutines.insert(0, ex_trade(arb + 'USDT', 'BUY', balances[0], 1, 0))
