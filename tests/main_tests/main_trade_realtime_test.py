@@ -203,22 +203,17 @@ async def populateArb():
             logger.exception(err)
             sys.exit()
 
-async def ex_trade(pair, side, quantity, leg, wait_time):
+async def ex_trade(pair, side, quantity, leg, wait_time, is_high):
     global trade_url
     global api_header
     global trade_responses
 
     logger.info('{} | {} {} {} {} '.format(int(round(time.time() * 1000)), pair, side, leg, wait_time))
 
-    if leg == 2 or leg == 3:
-        await asyncio.sleep(wait_time / 1000)
-
-    # if leg == 2:
-    #     await asyncio.sleep(0.0025)
-    # elif leg == 3:
-    #     await asyncio.sleep(0.005)
-    # elif leg == 4: #recursion
-    #     await asyncio.sleep(0.0025)
+    if leg == 2:
+        await asyncio.sleep(0.003 + (wait_time / 1000))
+    elif leg == 3:
+        await asyncio.sleep(0.006 + (wait_time / 1000))
 
     params = create_signed_params(pair, side, quantity, 1_000)
     try:
@@ -228,7 +223,10 @@ async def ex_trade(pair, side, quantity, leg, wait_time):
                 if json_res is not None:
                     if resp.status == 200:
                         # logger.info({'content': json_res, 'params': params})
-                        trade_responses.append({'params': params, 'response': json_res, 'leg': leg, 'wait_time': wait_time})
+                        if is_high:
+                            pass
+                        else:
+                            trade_responses.append({'params': params, 'response': json_res, 'leg': leg, 'wait_time': wait_time})
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Wait_time: {}'.format(leg, wait_time))
@@ -247,10 +245,10 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
     is_trading = True
     trade_coroutines = []
     if is_regular:
-        for i in range(0,3):
-            trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i + 1))
-            trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i + 2))
-        trade_coroutines.insert(0, ex_trade('BTCUSDT', 'BUY', balances[0], 1, 0))
+        for i in range(0,2):
+            trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i * 3, False))
+            trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i * 3, False))
+        trade_coroutines.insert(0, ex_trade('BTCUSDT', 'BUY', balances[0], 1, 0, False))
         await asyncio.wait(trade_coroutines)
         # trade_coroutines = [
         #     ex_trade('BTCUSDT', 'BUY', balances[0], 1),
@@ -263,10 +261,10 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
         #     ex_trade(arb + 'BTC', 'SELL', balances[1], 2),
         #     ex_trade('BTCUSDT', 'SELL', balances[2], 3)
         # ]
-        for i in range(0,3):
-            trade_coroutines.append(ex_trade(arb + 'BTC', 'SELL', balances[1], 2, i + 1))
-            trade_coroutines.append(ex_trade('BTCUSDT', 'SELL', balances[2], 3, i + 2))
-        trade_coroutines.insert(0, ex_trade(arb + 'USDT', 'BUY', balances[0], 1, 0))
+        for i in range(0,2):
+            trade_coroutines.append(ex_trade(arb + 'BTC', 'SELL', balances[1], 2, i * 3, False))
+            trade_coroutines.append(ex_trade('BTCUSDT', 'SELL', balances[2], 3, i * 3, False))
+        trade_coroutines.insert(0, ex_trade(arb + 'USDT', 'BUY', balances[0], 1, 0, False))
         await asyncio.wait(trade_coroutines)
 
     is_trading = False
@@ -477,7 +475,7 @@ async def trade_high_balances():
         if high_bal_dict:
             for item in high_bal_dict:
                 try:
-                    trade_respone = await ex_trade(item + 'USDT', 'SELL', str(round_quote_precision(high_bal_dict[item])), 0, 0)
+                    trade_respone = await ex_trade(item + 'USDT', 'SELL', str(round_quote_precision(high_bal_dict[item])), 0, 0, True)
                     logger.info('Trade Response for high_balance: {}'.format(trade_respone['content']))
                     logger.info('{} balance converted to USDT'.format(item))
 
