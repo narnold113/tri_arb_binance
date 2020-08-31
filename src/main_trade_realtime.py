@@ -35,7 +35,7 @@ balance = 0
 
 # ARBS = ['eth', 'xrp', 'ltc', 'dash']
 ARBS = get_arbs.get_arbs()
-ARBS = ARBS[0:20]
+# ARBS = ARBS[0:20]
 logger.info('Number of ARBS: {}'.format(len(ARBS)))
 PAIRS = []
 for arb in ARBS:
