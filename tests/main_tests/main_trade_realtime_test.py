@@ -232,7 +232,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time, is_high):
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Wait_time: {}'.format(leg, wait_time))
-                            if (leg == 2 or leg == 3) and wait_time == 6 and len(trade_responses) < 3:
+                            if (leg == 2 or leg == 3) and wait_time == 6:
                                 logger.info('Last order of leg {} failed. Recursion.'.format(leg))
                                 return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), 4, 0, False)
                         else:
@@ -310,10 +310,10 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
         ).format(
             arb,
             leakage_hash['BTC'],
-            leakage_hash['BTC'] * weighted_prices[0],
+            leakage_hash['BTC'] * (weighted_prices[0] if is_regular else weighted_prices[2]),
             arb,
             leakage_hash[arb],
-            leakage_hash[arb] * weighted_prices[0],
+            leakage_hash[arb] * (weighted_prices[2] if is_regular else weighted_prices[0]),
             slippage_hash,
             np.average([x['response']['transactTime'] - x['params']['timestamp'] for x in trade_responses]),
             trade_responses[2]['response']['transactTime'] - trade_responses[0]['params']['timestamp']

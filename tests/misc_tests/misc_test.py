@@ -439,10 +439,10 @@ logger.addHandler(logHandler)
 
 
 
-print(np.average([1,2,3]))
+# print(np.average([1,2,3]))
 
 
-
+print(2 * (4 if False else 2))
 
 
 
