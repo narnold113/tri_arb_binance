@@ -215,7 +215,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time, is_high):
     elif leg == 3:
         await asyncio.sleep(0.004 + (wait_time / 1000))
     elif leg == 4: # Recursion
-        await asyncio.sleep(0.001)
+        await asyncio.sleep(0.005)
 
     params = create_signed_params(pair, side, quantity, 1_000)
     try:
@@ -234,7 +234,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time, is_high):
                             logger.info('Leg {} failed. Wait_time: {}'.format(leg, wait_time))
                             if (leg == 2 or leg == 3 or leg == 4) and wait_time == 12 and len(trade_responses) < 3:
                                 logger.info('Last order of leg {} failed. Recursion.'.format(leg))
-                                return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), 4, 0, False)
+                                return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), 4, 12, False)
                         else:
                             logger.info('Some other type of error occurred: {}'.format(json_res))
                             sys.exit()
