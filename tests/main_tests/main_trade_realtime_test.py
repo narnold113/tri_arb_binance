@@ -249,7 +249,7 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
     is_trading = True
     trade_coroutines = []
     if is_regular:
-        for i in range(0,3):
+        for i in range(0,10):
             trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i * 3, False))
             trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i * 3, False))
         trade_coroutines.insert(0, ex_trade('BTCUSDT', 'BUY', balances[0], 1, 0, False))
