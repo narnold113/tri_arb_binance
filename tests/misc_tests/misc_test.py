@@ -442,7 +442,9 @@ logger.addHandler(logHandler)
 # print(np.average([1,2,3]))
 
 
-print(2 * (4 if False else 2))
+# print(2 * (4 if False else 2))
+x = [1,2,3,4,5,6,7,8,9,10]
+print(x[0:20])
 
 
 

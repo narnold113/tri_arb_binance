@@ -55,4 +55,6 @@ def get_arbs():
 
     return [arb.lower() for arb in arbitrage_book.keys()]
 
-# print(len(get_arbs()))
+# ARBS = get_arbs()
+# print(ARBS)
+# print(ARBS[0:25])
