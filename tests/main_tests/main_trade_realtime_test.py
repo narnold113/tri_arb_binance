@@ -140,7 +140,7 @@ async def populateArb():
     global balance
     while 1:
         try:
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0.005)
             reg_volume_hash = []
             rev_volume_hash = []
             for arb in ARBS:
