@@ -32,7 +32,7 @@ is_trading = False
 isBookFull = False
 build_set = set()
 balance = 0
-trade_responses = []
+# trade_responses = []
 
 ARBS = ['eth', 'xrp', 'ltc', 'dash']
 # ARBS = get_arbs.get_arbs()
@@ -233,6 +233,7 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
     global trade_responses
     is_trading = True
     trade_coroutines = []
+    trade_responses = []
     if is_regular:
         for i in range(0,4):
             trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i * 3, False))

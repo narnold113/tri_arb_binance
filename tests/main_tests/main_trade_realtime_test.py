@@ -321,7 +321,7 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
     )
 
     # sys.exit()
-    loop.close()
+    # loop.close()
 
 
     # global is_trading
