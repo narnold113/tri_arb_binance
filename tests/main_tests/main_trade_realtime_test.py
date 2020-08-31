@@ -485,7 +485,7 @@ async def trade_high_balances():
             for item in high_bal_dict:
                 try:
                     trade_respone = await ex_trade(item + 'USDT', 'SELL', str(round_quote_precision(high_bal_dict[item])), 0, 0, True)
-                    logger.info('Trade Response for high_balance: {}'.format(trade_respone['content']))
+                    # logger.info('Trade Response for high_balance: {}'.format(trade_respone['content']))
                     logger.info('{} balance converted to USDT'.format(item))
 
 
