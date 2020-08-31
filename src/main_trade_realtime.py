@@ -18,8 +18,8 @@ from datetime import datetime
 logger = logging.getLogger('tri_arb_binance')
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
-# logHandler = logging.StreamHandler()
+# logHandler = logging.FileHandler('tri_arb_binance.log', mode='a')
+logHandler = logging.StreamHandler()
 logHandler.setLevel(logging.INFO)
 logHandler.setFormatter(formatter)
 logger.addHandler(logHandler)
@@ -34,9 +34,9 @@ build_set = set()
 balance = 0
 trade_responses = []
 
-# ARBS = ['eth', 'xrp', 'ltc', 'dash']
-ARBS = get_arbs.get_arbs()
-ARBS = ARBS[0:26]
+ARBS = ['eth', 'xrp', 'ltc', 'dash']
+# ARBS = get_arbs.get_arbs()
+# ARBS = ARBS[0:26]
 logger.info('Number of ARBS: {}'.format(len(ARBS)))
 PAIRS = []
 for arb in ARBS:
@@ -148,7 +148,7 @@ async def populateArb():
                 rev_volume_hash.append(arbitrage_book[arb][arb + 'usdt'][1][2])
                 arbitrage_book[arb]['triangles'][1][1] = min(rev_volume_hash)
 
-                if arbitrage_book[arb]['triangles'][0][0] > 0.005 and is_trading == False: # Regular
+                if arbitrage_book[arb]['triangles'][0][0] > 0.0001 and is_trading == False: # Regular
                     if arbitrage_book[arb]['triangles'][0][1] >= 11:
                         weighted_prices = [
                             btc_book[1][0],
@@ -168,7 +168,7 @@ async def populateArb():
                             weighted_prices
                         )
                         break # breaking the for loop because the orderbooks used are now 30ish ms old
-                elif arbitrage_book[arb]['triangles'][1][0] > 0.005 and is_trading == False: # Reverse
+                elif arbitrage_book[arb]['triangles'][1][0] > 0.0001 and is_trading == False: # Reverse
                     if arbitrage_book[arb]['triangles'][1][1] >= 11:
                         weighted_prices = [
                             arbitrage_book[arb][arb + 'usdt'][1][0],
