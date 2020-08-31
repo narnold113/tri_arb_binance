@@ -417,7 +417,9 @@ async def subscribe() -> None:
                 try:
                     # now = time.time()
                     res = await ws.recv()
-                    await updateBook(res)
+                    logger.info(res)
+                    # await updateBook(res)
+
                     # print((time.time() - now) * 1000)
                 except Exception as err:
                     logger.exception(err)
@@ -534,7 +536,7 @@ async def main():
         sys.exit()
     coroutines = []
     coroutines.append(subscribe())
-    coroutines.append(fullBookTimer())
+    # coroutines.append(fullBookTimer())
     await asyncio.wait(coroutines)
 
 if __name__ == "__main__":
