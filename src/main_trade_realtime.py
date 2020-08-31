@@ -33,8 +33,8 @@ isBookFull = False
 build_set = set()
 balance = 0
 
-# ARBS = ['eth']
-ARBS = get_arbs.get_arbs()
+ARBS = ['eth', 'xrp', 'ltc', 'dash']
+# ARBS = get_arbs.get_arbs()
 logger.info('Number of ARBS: {}'.format(len(ARBS)))
 PAIRS = []
 for arb in ARBS:
