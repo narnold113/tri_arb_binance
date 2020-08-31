@@ -301,6 +301,8 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
             'Trades for {} arb were successful\n'
             'BTC Leakage: {} ({} USDT) and {} Leakage: {} ({} USDT)\n'
             'Slippage Percentages: {}\n'
+            'Average trade latency: {}\n'
+            'Arb latency: {}'
         ).format(
             arb,
             leakage_hash['BTC'],
@@ -308,7 +310,9 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
             arb,
             leakage_hash[arb],
             leakage_hash[arb] * weighted_prices[0],
-            slippage_hash
+            slippage_hash,
+            np.average([x['response']['transactTime'] - x['params']['timestamp'] for x in trade_responses]),
+            trade_responses[2]['response']['transactTime'] - trade_responses[0]['params']['timestamp']
         )
     )
 

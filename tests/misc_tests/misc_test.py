@@ -439,11 +439,7 @@ logger.addHandler(logHandler)
 
 
 
-logger.info({'content': 1234})
-
-for i in range(0,2):
-    print(i)
-
+print(np.average([1,2,3]))
 
 
 
