@@ -32,6 +32,7 @@ is_trading = False
 isBookFull = False
 build_set = set()
 balance = 0
+trade_responses = []
 
 # ARBS = ['eth', 'xrp', 'ltc', 'dash']
 ARBS = get_arbs.get_arbs()
