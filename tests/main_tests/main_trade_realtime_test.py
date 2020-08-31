@@ -228,7 +228,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time, is_high):
                         if is_high:
                             pass
                         else:
-                            trade_responses.append({'params': params, 'response': json_res, 'leg': leg, 'wait_time': wait_time}, 'trade_latency': json_res['transactTime'] - params['timestamp'])
+                            trade_responses.append({'params': params, 'response': json_res, 'leg': leg, 'wait_time': wait_time, 'trade_latency': json_res['transactTime'] - params['timestamp']})
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Wait_time: {}'.format(leg, wait_time))
