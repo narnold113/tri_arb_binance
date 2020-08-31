@@ -232,7 +232,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time, is_high):
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Wait_time: {}'.format(leg, wait_time))
-                            if (leg == 2 or leg == 3) and wait_time == 6:
+                            if (leg == 2 or leg == 3) and wait_time == 6 and len(trade_responses) < 3:
                                 logger.info('Last order of leg {} failed. Recursion.'.format(leg))
                                 return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), 4, 0, False)
                         else:
