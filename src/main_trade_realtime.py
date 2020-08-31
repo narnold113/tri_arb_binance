@@ -294,7 +294,7 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
             trade_responses[2]['response']['transactTime'] - trade_responses[0]['params']['timestamp']
         )
     )
-    loop.close()
+    # loop.close()
 
 
 async def subscribe() -> None:

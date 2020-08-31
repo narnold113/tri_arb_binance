@@ -443,8 +443,10 @@ logger.addHandler(logHandler)
 
 
 # print(2 * (4 if False else 2))
-x = [1,2,3,4,5,6,7,8,9,10]
-print(x[0:20])
+# x = [1,2,3,4,5,6,7,8,9,10]
+# print(x[0:20])
+x = 0.00000000123
+print(str(x))
 
 
 
