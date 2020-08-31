@@ -208,7 +208,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time, is_high):
     global api_header
     global trade_responses
 
-    logger.info('{} | {} {} {} {} '.format(int(round(time.time() * 1000)), pair, side, leg, wait_time))
+    logger.info('{} | {} {} {} {} '.format(int(round(time.time() * 1000)), pair, side, quantity, leg, wait_time))
 
     if leg == 2:
         await asyncio.sleep(0.001 + (wait_time / 1000))
