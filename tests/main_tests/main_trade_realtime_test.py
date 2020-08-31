@@ -232,7 +232,7 @@ async def ex_trade(pair, side, quantity, leg, wait_time, is_high):
                     else:
                         if json_res['code'] == -2010:
                             logger.info('Leg {} failed. Wait_time: {}'.format(leg, wait_time))
-                            if (leg == 2 or leg == 3 or leg == 4) and wait_time == 10 and len(trade_responses) < 3:
+                            if (leg == 2 or leg == 3 or leg == 4) and wait_time == 9 and len(trade_responses) < 3:
                                 logger.info('Last order of leg {} failed. Recursion.'.format(leg))
                                 return await ex_trade(pair, side, str(round_quote_precision(float(quantity) * 0.999)), 4, 12, False)
                         else:
@@ -249,9 +249,9 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
     is_trading = True
     trade_coroutines = []
     if is_regular:
-        for i in range(0,6):
-            trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i * 2, False))
-            trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i * 2, False))
+        for i in range(0,4):
+            trade_coroutines.append(ex_trade(arb + 'BTC', 'BUY', balances[1], 2, i * 3, False))
+            trade_coroutines.append(ex_trade(arb + 'USDT', 'SELL', balances[2], 3, i * 3, False))
         trade_coroutines.insert(0, ex_trade('BTCUSDT', 'BUY', balances[0], 1, 0, False))
         await asyncio.wait(trade_coroutines)
         # trade_coroutines = [
@@ -265,9 +265,9 @@ async def ex_arb(arb, is_regular, balances, weighted_prices):
         #     ex_trade(arb + 'BTC', 'SELL', balances[1], 2),
         #     ex_trade('BTCUSDT', 'SELL', balances[2], 3)
         # ]
-        for i in range(0,6):
-            trade_coroutines.append(ex_trade(arb + 'BTC', 'SELL', balances[1], 2, i * 2, False))
-            trade_coroutines.append(ex_trade('BTCUSDT', 'SELL', balances[2], 3, i * 2, False))
+        for i in range(0,4):
+            trade_coroutines.append(ex_trade(arb + 'BTC', 'SELL', balances[1], 2, i * 3, False))
+            trade_coroutines.append(ex_trade('BTCUSDT', 'SELL', balances[2], 3, i * 3, False))
         trade_coroutines.insert(0, ex_trade(arb + 'USDT', 'BUY', balances[0], 1, 0, False))
         await asyncio.wait(trade_coroutines)
 
